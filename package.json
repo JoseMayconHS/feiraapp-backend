@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "name": "feira-app",
+  "author": {
+    "name": "José Maycon Hermogenes da Silva",
+    "url": "https://www.facebook.com/profile.php?id=100008160376957"
+  },
+  "scripts": {
+    "start": "node src/server",
+    "dev": "nodemon src/server",
+    "prod": "pm2 start ecosystem.config.js --env production",
+    "proto": "pm2 start ecosystem.config.js"
+  },
+  "dependencies": {
+    "axios": "^0.21.0",
+    "bcryptjs": "2.4.3",
+    "cors": "2.8.5",
+    "cross-env": "^7.0.3",
+    "dotenv": "8.2.0",
+    "expo-server-sdk": "3.4.0",
+    "express": "4.17.1",
+    "generate-password": "1.5.0",
+    "jsonwebtoken": "8.5.1",
+    "mongoose": "5.7.12",
+    "pm2": "^4.5.0",
+    "stripe": "^8.129.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.1"
+  },
+  "license": "ISC"
+}
