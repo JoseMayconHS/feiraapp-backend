@@ -40,51 +40,13 @@ const User = new Schema({
 		default: ''
 	},
 	pro: {
-		type: Boolean,
-		default: false
+		type: Number,
+		default: 0
 	},
 	status: {
 		type: Boolean,
 		default: true
-	},
-	buy_date: {
-		type: String,
-		default: ''
-	},
-	language: {
-		type: String,
-		default: 'pt'
-	},
-	history: [{
-		score: {
-			type: Number,
-			required: true
-		}, 
-		date: {
-			day: {
-				type: Number,
-				required: true
-			},
-			month: {
-				type: Number,
-				required: true
-			},
-			year: {
-				type: Number,
-				required: true
-			},
-		},
-		questions: [{
-			question_id: {
-				type: Schema.Types.ObjectId,
-				required: false
-			},
-			answer_id: {
-				type: Schema.Types.ObjectId,
-				required: false
-			}
-		}]
-	}]
+	}
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

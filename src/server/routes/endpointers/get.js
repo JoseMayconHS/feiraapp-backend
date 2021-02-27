@@ -1,8 +1,6 @@
 const route = require('express').Router(),
 	userControllers = require('../controllers/user'),
-	answerControllers = require('../controllers/answer'),
-	questionControllers = require('../controllers/question'),
-	answerTypeControllers = require('../controllers/answer_type'),
+	productControllers = require('../controllers/product'),
 	admControllers = require('../controllers/adm'),
 	pushNotificationControllers = require('../controllers/pushNotification')
 
@@ -22,19 +20,10 @@ route
 	.get('/auth/admin/user/:page', userControllers.indexAll)
 	.get('/auth/admin/user/single/:id', userControllers.single)
 	.get('/auth/admin/user/search/:word/:page', userControllers.search)
-	// Questãos
-	.get('/auth/admin/question/:page', questionControllers.indexAll)
-	.get('/auth/user/question', questionControllers.indexToApp)
-	.get('/auth/admin/question/single/:id', questionControllers.single)
-	// .get('/auth/user/product/search/:word/:page', questionControllers.search)
-	// Pacote de respostas
-	.get('/auth/user/answer-type/:page', answerTypeControllers.indexAll)
-	.get('/auth/admin/all/answer-type', answerTypeControllers.all)
-	.get('/auth/admin/answer-type/single/:id', answerTypeControllers.single)
-	// Respostas
-	.get('/auth/admin/answer/:page', answerControllers.indexAll)
-	.get('/auth/admin/all/answer', answerControllers.all)
-	.get('/auth/admin/answer/single/:id', answerControllers.single)
+	// Produtos
+	.get('/auth/admin/product/:page', productControllers.indexAll)
+	.get('/auth/admin/all/product', productControllers.all)
+	.get('/auth/admin/product/single/:id', productControllers.single)
 	// Notificações
 	.get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// Gestores

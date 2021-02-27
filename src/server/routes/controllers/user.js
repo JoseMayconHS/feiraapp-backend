@@ -1,8 +1,6 @@
 const bcryptjs = require('bcryptjs'),
   functions = require('../../../functions'),
   User = require('../../../data/Schemas/User'),
-  Question = require('../../../data/Schemas/Question'),
-  Answer = require('../../../data/Schemas/Answer'),
   generatePassword = require('generate-password'),
   service_email = require('../../../services/email'),
   limit = +process.env.LIMIT_PAGINATION || 10,
@@ -167,10 +165,16 @@ exports.store = async (req, res) => {
   try {    
     const { 
       username, email, expo_token = 'sem-token', lang = 'pt',
-      facebook_id = '', google_id = '', pro = false
+      facebook_id = '', google_id = ''
     } = req.body
 
     let { password = '' } = req.body
+
+    if (functions.hasEmpty({
+      username, email
+    })) {
+      return res.status(400).json({ ok: false, message: 'Existe campos vazios!' })
+    }
 
     const errors = {
       not_created: {
@@ -196,21 +200,6 @@ exports.store = async (req, res) => {
               password = functions.criptor(password)
             }
 
-            const proProps = {}
-
-            if (pro) {
-              const d = new Date()
-
-              const day = +d.getDate()
-              const month = +d.getMonth() + 1
-              const year = +d.getFullYear()
-
-              const buy_date = `${(day < 10) ? `0${day}` : day}/${(month < 10) ? `0${month}` : month}/${ year }`
-              
-              proProps.pro = true
-              proProps.buy_date = buy_date
-            }
-
             User.findOne({ expo_token })
               .select('_id')
               .then(userByExpoToken => {
@@ -223,19 +212,10 @@ exports.store = async (req, res) => {
                     expo_token: expo_tokenAlreadyExists ? '' : expo_token,
                     facebook_auth: !!facebook_id.length,
                     google_auth: !!google_id.length,
-                    facebook_id, google_id,
-                    ...proProps
+                    facebook_id, google_id
                   })
                   .then(async user => {
                     try {
-
-                      if (pro) {
-                        const title = lang === 'us' ? 'PRO plan successfully acquired!' : 'Plano PRO adquirido com sucesso!'
-
-                        const query = `titulo=${ title }&destinatario=${ user.email }&nome=${ user.username }&token=${ service_email_token }&lang=${ lang }`
-                        
-                        await service_email(`?${ query }`)
-                      }
 
                       const token = await functions.token(user._doc._id)
     
@@ -322,44 +302,6 @@ exports.update = (req, res) => {
   }
 }
 
-exports.avaliable = async (req, res) => {
-  try {
-
-    const { data = [] } = req.body
-
-    let result = []
-
-    Question.find({}, '_id text')
-      .then(questions => {
-        Answer.find({}, '_id, text')
-          .then(answers => {
-
-            result = data.map(({ question_id, answer_id }) => {
-              const question_data = questions.find(({ _id }) => String(question_id) === String(_id))
-
-              const answer_data = answers.find(({ _id }) => String(answer_id) === String(_id))
-
-              return {
-                question_text: question_data.text,
-                answer_text: answer_data.text
-              }
-
-            })
-
-            res.status(200).json(result)
-
-          }).catch(() => {
-            res.status(500).send()
-          })
-
-      }).catch(() => {
-        res.status(500).send()
-      })
-
-  } catch(e) {
-    res.status(500).send()
-  }
-}
 
 exports.sign = (req, res) => {
   // OK
@@ -369,8 +311,7 @@ exports.sign = (req, res) => {
     const { 
       email, password, 
       expo_token = 'sem-token', lang = 'pt', 
-      google_id, facebook_id,
-      pro_mode
+      google_id, facebook_id
     } = req.body
 
     const errors = {
@@ -408,8 +349,6 @@ exports.sign = (req, res) => {
           let bySecondPassword = false
 
           let updateExpoToken = false
-
-          let sendAsPro = false
 
           let error = false
 
@@ -457,32 +396,6 @@ exports.sign = (req, res) => {
                   
                 }
               })
-              .then(async () => {
-                try {
-                  if (pro_mode && !user.pro) {
-                    const d = new Date()
-
-                    const day = +d.getDate()
-                    const month = +d.getMonth() + 1
-                    const year = +d.getFullYear()
-
-                    const buy_date = `${(day < 10) ? `0${day}` : day}/${(month < 10) ? `0${month}` : month}/${ year }`
-
-                    await User.findByIdAndUpdate(user._id, { pro: true, buy_date }).exec()
-
-                    sendAsPro = true
-
-                    const title = lang === 'us' ? 'PRO plan successfully acquired!' : 'Plano PRO adquirido com sucesso!'
-
-                    const query = `titulo=${ title }&destinatario=${ user.email }&nome=${ user.username }&token=${ service_email_token }&lang=${ lang }`
-                    
-                    await service_email(`?${ query }`)
-
-                  }
-                } catch(e) {
-                  error = true
-                }
-              })
               .catch(() => {})
               .finally(() => {
                 if (!error) {
@@ -490,7 +403,7 @@ exports.sign = (req, res) => {
                     .then(token => {
                       res.status(200).json(
                         { ok: true, 
-                          data: { ...user._doc, password: undefined, second_password: undefined, pro: sendAsPro || user.pro }, 
+                          data: { ...user._doc, password: undefined, second_password: undefined }, 
                           token, 
                           second_password: bySecondPassword 
                         }
@@ -525,62 +438,6 @@ exports.sign = (req, res) => {
     res.status(500).send()
   }
 }
-
-exports.signBySocialNetwork = async (req, res) => {
-  try {
-
-    const errors = {
-      error_generating_token: {
-        pt: 'Erro ao gerar token! 💥',
-        us: 'Error generating token! 💥'
-      },
-      no_user: {
-        pt: 'Ninguém com este e-mail',
-        us: 'No one with this email'
-      },
-      disabled: {
-        pt: 'No momento, sua conta está desativada! ⏳',
-        us: 'Your account is currently disabled! ⏳'
-      }
-    }
-
-    User.findOne(req.body)
-      .then(user => {
-
-        try {
-          if (!user) 
-            throw erros.no_user[lang]
-          
-          if (!user.status)
-            throw errors.disabled[lang]
-
-          functions.token(user._doc._id)
-            .then(token => {
-              res.status(200).json(
-                { 
-                  ok: true, 
-                  data: { ...user._doc, password: undefined, second_password: undefined }, 
-                  token
-                }
-              )
-            })
-            .catch(() => {
-              res.status(200).json({ ok: false, message: errors.error_generating_token[lang] })
-            }) 
-        } catch (e) {
-          res.status(200).json({ ok: false, message: e })
-        }
-
-      })
-      .catch(() => {
-        res.status(500).send()
-      })
-
-  } catch(e) {
-
-  }
-}
-
 
 exports.remove = (req, res) => {
   // OK

@@ -3,6 +3,19 @@ require('dotenv').config()
 const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs')
 
+exports.hasEmpty = values => {
+  let valid = false
+
+  Object.values(values)
+    .forEach(value => {
+      if (!valid && value.length === 0) {
+        valid = true
+      }
+    })
+
+  return valid
+}  
+
 exports.middleware = (...steps) => {
   const stepByStep = index => {
     steps && index < steps.length && steps[index](() => stepByStep(index + 1))
