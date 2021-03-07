@@ -8,9 +8,7 @@ exports.hasEmpty = values => {
 
   Object.values(values)
     .forEach(value => {
-      if (!valid && value.length === 0) {
-        valid = true
-      }
+      valid = !valid && value.length
     })
 
   return valid

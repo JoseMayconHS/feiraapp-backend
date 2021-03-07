@@ -46,7 +46,18 @@ const User = new Schema({
 	status: {
 		type: Boolean,
 		default: true
-	}
+	},
+	local: {
+		estado: {
+			id: Number,
+			nome: String,
+			sigla: String,
+		},
+		municipio: {
+			id: Number,
+			nome: String,
+		}
+  }
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

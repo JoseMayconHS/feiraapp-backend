@@ -6,10 +6,9 @@ const route = require('express').Router(),
 
 const html = `
 	<div style='font-family: sans-serif;background: #bafcff;display: flex;justify-content: center;align-items: center;flex-direction: column;margin: 134px auto 20px auto;max-width: 500px;border-radius: 10px;box-shadow: 0 0 41px 20px #bafcff;border: 1px solid #999;'>
-		<h1 style='margin-bottom: 0.6em;'>QAD - 1.0.0</h1>
+		<h1 style='margin-bottom: 0.6em;'>FeiraApp - 1.0.0</h1>
 		<p style='max-width: 500px; line-height: 21px; font-weight: 600;'>Desenvolvido por 
 		<a href='https://www.facebook.com/profile.php?id=100008160376957' target='_blank' style='color: tomato; text-decoration: none;'>Maycon Silva</a></p>
-		<p style='max-width: 500px; line-height: 21px; font-weight: 600;'><a href='https://www.capiba.com.br' target='_blank' style='color: violet; text-decoration: none;'>Capiba Comunicação</a> 2020</p>
 	</div>
 `	
 

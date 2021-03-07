@@ -7,6 +7,13 @@ exports.store = (req, res) => {
 
   try {
 
+    const { nome, tipo, precos } = req.body
+
+    if (functions.hasEmpty({
+      nome, tipo
+    })) {
+      
+    }
 
   } catch(err) {
     res.status(500).send()

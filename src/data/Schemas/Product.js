@@ -18,36 +18,37 @@ const Product =  new Schema({
 		default: 0
 	},
 	tipo: {
-		type: Schema.Types.ObjectId,
+		type: String,
 		required: true
 	},
 	peso: {
 		tipo: {
 			type: String,
-			required: true
+			required: true,
+			default: 'unidade'
 		},
 		valor: {
 			type: Number,
-			required: true
+			required: true,
+			default: 1
 		}
 	},
 
 	precos: {
 		type: [{
-			id: Schema.Types.ObjectId,
 			sigla: String,
 			municipios: [{
 				nome: String,
-				estado_id: Schema.Types.ObjectId,
+				estado_id: Number,
 				menor_preco: {
 					preco: Number,
-					supermercado_id: Schema.Types.ObjectId,
-					feira_id: Schema.Types.ObjectId
+					supermercado_id: String,
+					feira_id: String
 				},
 				maior_preco: {
 					preco: Number,
-					supermercado_id: Schema.Types.ObjectId,
-					feira_id: Schema.Types.ObjectId
+					supermercado_id: String,
+					feira_id: String
 				}
 			}]
 		}],
@@ -55,7 +56,7 @@ const Product =  new Schema({
 	},
 	marca: {
 		marca_id: {
-			type: Schema.Types.ObjectId,
+			type: String,
 			required: true
 		},
 		nome: { 

@@ -1,3 +1,5 @@
+const { resolve } = require('path')
+
 const bcryptjs = require('bcryptjs'),
   functions = require('../../../functions'),
   User = require('../../../data/Schemas/User'),
@@ -165,80 +167,107 @@ exports.store = async (req, res) => {
   try {    
     const { 
       username, email, expo_token = 'sem-token', lang = 'pt',
+      local = {},
       facebook_id = '', google_id = ''
     } = req.body
 
     let { password = '' } = req.body
 
+    const { estado = {}, municipio = {} } = local
+
+    let status = 500
+
     if (functions.hasEmpty({
-      username, email
+      username, email, 
     })) {
-      return res.status(400).json({ ok: false, message: 'Existe campos vazios!' })
+      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    const errors = {
-      not_created: {
-        pt: 'Não criado',
-        us: 'Not created'
-      },
-      email_already_exists: {
-        pt: 'E-mail já cadastrado',
-        us: 'E-mail already registered'
+    if (!facebook_id.length && !google_id.length) {
+      if (!Object.values(estado).length || !Object.values(municipio).length) {
+        return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
       }
     }
 
     User.findOne({ email })
-      .then(userByEmail => {
+      .select('local _id facebook_auth google_auth')
+      .then(async userByEmail => {
 
-        if (!userByEmail) {
+        if (
+          (!userByEmail) || (facebook_id.length || google_id.length)
+        ) {
 
           try {
-
+            
             let expo_tokenAlreadyExists = false
-
+            
             if (!google_id.length && !facebook_id.length) {
               password = functions.criptor(password)
             }
-
+            
             User.findOne({ expo_token })
-              .select('_id')
-              .then(userByExpoToken => {
-                expo_tokenAlreadyExists = !!userByExpoToken
-              }).catch(() => {})
-              .finally(() => {
-                User.create({ 
-                    username: username.trim(), 
-                    email, password, 
-                    expo_token: expo_tokenAlreadyExists ? '' : expo_token,
-                    facebook_auth: !!facebook_id.length,
-                    google_auth: !!google_id.length,
-                    facebook_id, google_id
-                  })
-                  .then(async user => {
-                    try {
+            .select('_id')
+            .then(userByExpoToken => {
+              expo_tokenAlreadyExists = !!userByExpoToken
+            }).catch(() => {})
+            .finally(async () => {
+              try {
+                let newUser 
 
-                      const token = await functions.token(user._doc._id)
-    
-                      res.status(201).json({ 
-                        ok: true, 
-                        data: { ...user._doc, password: undefined }, 
-                        token 
+                const data = { 
+                  username: username.trim(), 
+                  email, password, local,
+                  expo_token: expo_tokenAlreadyExists ? '' : expo_token,
+                  facebook_auth: !!facebook_id.length,
+                  google_auth: !!google_id.length,
+                  facebook_id, google_id
+                }
+
+                if (
+                  (userByEmail) && (facebook_id.length || google_id.length) && (!userByEmail.facebook_auth && !userByEmail.google_auth)
+                  ) {
+                    console.log(`Transformar em login com o ${ facebook_id.length ? 'Facebook' : 'Google' }`)
+
+                    delete data.local
+
+                    newUser = await User.findByIdAndUpdate(userByEmail._id, data, { new: true })
+
+                  } else if (userByEmail && (userByEmail.facebook_auth || userByEmail.google_auth)) {
+                    if (Object.values(estado).length) {
+                      newUser = await User.findByIdAndUpdate(userByEmail._id, { local }, { new: true })
+                    } else {
+                      return res.status(200).json({ 
+                        ok: false, message: 'E-mail já cadastrado', 
+                        social_network: true,
+                        localSeted: userByEmail.local
                       })
-                    } catch(e) {
-                      res.status(500).send()
                     }
-                  })
-                  .catch(_ => {
-                    res.status(200).json({ ok: false, message: errors.not_created[lang] })
-                  })
-                })
+                  } else {
+                    newUser = await User.create(data)
+                  }
 
+                  const token = await functions.token(newUser._doc._id)
+
+                  res.status(201).json({ 
+                    ok: true, 
+                    data: { ...newUser._doc, password: undefined }, 
+                    token 
+                  })
+                } catch(e) {
+                  res.status(400).json({ ok: false, message: 'Não criado!' })
+                }
+              })
+            
           } catch(error) {
-            res.status(500).send()
+            res.status(status).send()
           }
 
         } else {
-          res.status(200).json({ ok: false, message: errors.email_already_exists[lang], social_network: !!google_id.length || !!facebook_id.length })
+          res.status(200).json({ 
+            ok: false, message: 'E-mail já cadastrado', 
+            social_network: !!google_id.length || !!facebook_id.length,
+            localSeted: userByEmail.local
+          })
         }
 
       }).catch(e => {
@@ -435,6 +464,23 @@ exports.sign = (req, res) => {
 
 
   } catch(error) {
+    res.status(500).send()
+  }
+}
+
+exports.logout = (req, res) => {
+  try {
+
+    if (!req._id) throw new Error();
+
+    User.findByIdAndUpdate(req._id, { expo_token: 'token-retirado' })
+      .then(() => {})
+      .catch(() => {})
+      .finally(() => {
+        res.status(200).send()
+      })
+
+  } catch(e) {
     res.status(500).send()
   }
 }
