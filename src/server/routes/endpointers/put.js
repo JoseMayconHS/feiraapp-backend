@@ -11,5 +11,7 @@ route
 	// Dashboard
 	.put('/auth/admin/product/:id', productControllers.update)
 	.put('/auth/admin/user/status/:id', admControllers.toggleUserSignUp)
+	// Ambos
+	.put('/auth/user/product/:id', productControllers.update)
 
 module.exports = app => app.use(route)

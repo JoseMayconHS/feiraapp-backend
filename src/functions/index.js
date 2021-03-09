@@ -7,7 +7,7 @@ exports.hasEmpty = values => {
   let valid = false
 
   Object.values(values)
-    .forEach(value => {
+    .forEach((value, index) => {
       valid = !valid && value.length
     })
 

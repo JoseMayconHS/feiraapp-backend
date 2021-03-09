@@ -36,17 +36,19 @@ const Product =  new Schema({
 
 	precos: {
 		type: [{
+			estado_id: Number,
 			sigla: String,
+			nome: String,
 			municipios: [{
 				nome: String,
-				estado_id: Number,
+				municipio_id: Number,
 				menor_preco: {
-					preco: Number,
+					preco: String,
 					supermercado_id: String,
 					feira_id: String
 				},
 				maior_preco: {
-					preco: Number,
+					preco: String,
 					supermercado_id: String,
 					feira_id: String
 				}
