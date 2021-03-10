@@ -105,7 +105,8 @@ exports.store = async (req, res) => {
       produto_nome,
       tipo,
       local,
-      supermercado_id
+      supermercado_id,
+      cache
     } = req.body
 
     const { 
@@ -156,43 +157,56 @@ exports.store = async (req, res) => {
       nome: marca_nome
     }
 
+    let cache_id = 0
+    let hash_identify_device = ''
+    let supermercado_cache_id = ''
+
+    if (cache) {
+      cache_id = req.body.id,
+      hash_identify_device = req.body.hash_identify_device
+      supermercado_cache_id = supermercado_id
+    }
+
     const data = {
-      nome: produto_nome, favorito, fixado, precos, marca: marca_obj, tipo, peso
+      nome: produto_nome, favorito, fixado, precos, marca: marca_obj, tipo, peso, 
+      cache_id, hash_identify_device, supermercado_cache_id
     }
 
     const data_produto = await Product.create(data)
 
-    Supermarket
-      .findById(supermercado_id)
-      .select('produtos')
-      .then(supermarket => {
-
-        let products = [ ...supermarket.produtos ]
-
-        const productIndex = products.findIndex(({ produto_id }) => produto_id === String(data_produto._doc._id))
-
-        if (productIndex !== -1) {
-          products[productIndex] = {
-            ...products[productIndex],
-            preco: preco_u
+    if (!cache) {
+      Supermarket
+        .findById(supermercado_id)
+        .select('produtos')
+        .then(supermarket => {
+  
+          let products = [ ...supermarket.produtos ]
+  
+          const productIndex = products.findIndex(({ produto_id }) => produto_id === String(data_produto._doc._id))
+  
+          if (productIndex !== -1) {
+            products[productIndex] = {
+              ...products[productIndex],
+              preco: preco_u
+            }
+          } else {
+            products = [ ...products, {
+              produto_id: data_produto._doc._id,
+              preco: preco_u
+            }]
           }
-        } else {
-          products = [ ...products, {
-            produto_id: data_produto._doc._id,
-            preco: preco_u
-          }]
-        }
-
-        Supermarket.findByIdAndUpdate(supermercado_id, {
-          produtos: products
+  
+          Supermarket.findByIdAndUpdate(supermercado_id, {
+            produtos: products
+          })
         })
-      })
-      .catch(console.error)
-      .finally(() => {
-        res.status(201).json({ ok: true, data: data_produto._doc })
-      })
-
-
+        .catch(console.error)
+        .finally(() => {
+          res.status(201).json({ ok: true, data: data_produto._doc })
+        })
+    } else {
+      res.status(201).send()
+    }
 
   } catch(err) {
     console.log(err)

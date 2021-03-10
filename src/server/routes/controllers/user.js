@@ -596,3 +596,14 @@ exports.search = (req, res) => {
 	}
 }
 
+exports.cacheToAPI = async (req, res) => {
+  try {
+    console.log('Finalizar cache')
+    console.log(req.params)
+    
+  } catch(e) {
+    console.error(e)
+    res.status(500).send()
+  }
+}
+

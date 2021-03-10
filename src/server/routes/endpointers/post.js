@@ -2,6 +2,7 @@ const route = require('express').Router(),
 	userControllers = require('../controllers/user'),
 	productControllers = require('../controllers/product'),
 	brandControllers = require('../controllers/brand'),
+	supermarketControllers = require('../controllers/supermarket'),
 	admControllers = require('../controllers/adm'),
 	pushNotificationControllers = require('../controllers/pushNotification'),
 	paymentControllers = require('../controllers/payment')
@@ -21,5 +22,10 @@ route
 	.post('/auth/admin/expo', pushNotificationControllers.send)
 	// Ambos
 	.post('/auth/user/brand', brandControllers.store)
+	.post('/auth/user/supermarket', supermarketControllers.store)
+	// Do cache para a api, sem autênticação
+	.post('/user/supermarket', supermarketControllers.store)
+	.post('/user/product', productControllers.store)
+	.post('/user/cache-to-api/:hash', userControllers.cacheToAPI)
 
 module.exports = app => app.use(route)

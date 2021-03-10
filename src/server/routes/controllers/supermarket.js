@@ -9,20 +9,35 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome,  descricao
+      nome, local, cache
     } = req.body
 
+    console.log(req.body)
+
+    const { estado = {}, municipio = {} } = local
+
+    const { nome: estado_nome, sigla: estado_sigla } = estado
+    const { nome: municipio_nome } = municipio
+
     const checkEmpty = {
-      nome
+      nome, municipio_nome, estado_nome, estado_sigla
     }
 
     if (functions.hasEmpty(checkEmpty)) {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    Brand.create({ nome, descricao })
-      .then(brand => {
-        res.status(201).json({ ok: true, data: brand._doc })
+    let cache_id = 0
+    let hash_identify_device = ''
+
+    if (cache) {
+      cache_id = req.body.id,
+      hash_identify_device = req.body.hash_identify_device
+    }
+
+    Supermarket.create({ nome, local, cache_id, hash_identify_device })
+      .then(supermarket => {
+        res.status(201).json({ ok: true, data: supermarket._doc })
       })
       .catch(e => {
         console.error(e)
@@ -41,18 +56,23 @@ exports.indexAll = (req, res) => {
 
   try {
 
-    Product.countDocuments((err, count) => {
+    Supermarket.countDocuments((err, count) => {
       if (err) {
         res.status(500).send()
       } else {
         const { page = 1 } = req.params
+        let { limit: limitQuery } = req.query
 
-        Product.find()
-          .limit(limit)
-          .skip((limit * page) - limit)
+        if (!limitQuery) {
+          limitQuery = limit
+        }
+
+        Supermarket.find()
+          .limit(limitQuery)
+          .skip((limitQuery * page) - limitQuery)
           .sort('-created_at')
           .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, count, limit })
+            res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
           })
           .catch(_ => {
             res.status(500).send()
@@ -62,6 +82,7 @@ exports.indexAll = (req, res) => {
     })
 
   } catch(err) {
+    console.error(err)
     res.status(500).send()
   }
 }

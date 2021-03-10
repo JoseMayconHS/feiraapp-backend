@@ -1,6 +1,14 @@
 const { Schema, model } = require('mongoose')
 
 const Brand =  new Schema({
+	cache_id: {
+		type: Number,
+		default: 0
+	},
+	hash_identify_device: {
+		type: String,
+		default: ''
+	},
 	nome: {
 		type: String,
 		required: true

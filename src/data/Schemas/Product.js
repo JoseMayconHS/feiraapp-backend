@@ -1,6 +1,18 @@
 const { Schema, model } = require('mongoose')
 
 const Product =  new Schema({
+	cache_id: {
+		type: Number,
+		default: 0
+	},
+	supermercado_cache_id: {
+		type: String,
+		default: ''
+	},
+	hash_identify_device: {
+		type: String,
+		default: ''
+	},
 	nome: {
 		type: String,
 		required: true

@@ -1,6 +1,7 @@
 const route = require('express').Router(),
 	userControllers = require('../controllers/user'),
 	productControllers = require('../controllers/product'),
+	supermarketControllers = require('../controllers/supermarket'),
 	admControllers = require('../controllers/adm'),
 	pushNotificationControllers = require('../controllers/pushNotification')
 
@@ -23,6 +24,8 @@ route
 	.get('/auth/admin/product/:page', productControllers.indexAll)
 	.get('/auth/admin/all/product', productControllers.all)
 	.get('/auth/admin/product/single/:id', productControllers.single)
+	// Supermercados
+	.get('/auth/user/supermarket/:page', supermarketControllers.indexAll)
 	// Notificações
 	.get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// Gestores

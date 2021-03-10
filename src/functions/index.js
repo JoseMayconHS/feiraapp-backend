@@ -8,7 +8,7 @@ exports.hasEmpty = values => {
 
   Object.values(values)
     .forEach((value, index) => {
-      valid = !valid && value.length
+      valid = !valid && typeof value === 'string' && value.length
     })
 
   return valid
