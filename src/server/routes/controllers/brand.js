@@ -9,7 +9,7 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome,  descricao
+      nome,  descricao, cache
     } = req.body
 
     const checkEmpty = {
@@ -20,7 +20,15 @@ exports.store = async (req, res) => {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    Brand.create({ nome, descricao })
+    let cache_id = 0
+    let hash_identify_device = ''
+
+    if (cache) {
+      cache_id = req.body.id
+      hash_identify_device = req.body.hash_identify_device
+    }
+
+    Brand.create({ nome, descricao, cache_id, hash_identify_device })
       .then(brand => {
         res.status(201).json({ ok: true, data: brand._doc })
       })

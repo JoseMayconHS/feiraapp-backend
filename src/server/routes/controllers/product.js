@@ -109,9 +109,12 @@ exports.store = async (req, res) => {
       cache
     } = req.body
 
+    console.log('product.store ', req.body)
+
     const { 
       nome: marca_nome, 
       id: marca_id, 
+      marca_id: marca_id_cache,
       descricao: marca_descricao 
     } = marca
     const { tipo: peso_tipo } = peso
@@ -130,11 +133,39 @@ exports.store = async (req, res) => {
 
     let data_marca = false
 
-    if (!marca_id) {
-      data_marca = await Brand.create({
-        nome: marca_nome,
-        descricao: marca_descricao
-      })
+    let cache_id = 0
+    let hash_identify_device = ''
+    let supermercado_cache_id = ''
+
+    if (cache) {
+      cache_id = req.body.id
+      hash_identify_device = req.body.hash_identify_device
+      supermercado_cache_id = supermercado_id
+    }
+
+    if ((cache && marca_id_cache) || !marca_id) {
+      let criar = true
+      let brand = false
+
+      if (cache) {
+        brand = await Brand.findById(marca_id_cache)
+
+        console.log({ brand })
+
+        if (brand) {
+          criar = false
+        }
+      }
+
+      if (criar) {
+        data_marca = await Brand.create({
+          nome: marca_nome,
+          descricao: marca_descricao,
+          hash_identify_device
+        })
+      } else {
+        data_marca = brand
+      }
 
     }
 
@@ -155,16 +186,6 @@ exports.store = async (req, res) => {
     const marca_obj = {
       marca_id: data_marca._doc._id,
       nome: marca_nome
-    }
-
-    let cache_id = 0
-    let hash_identify_device = ''
-    let supermercado_cache_id = ''
-
-    if (cache) {
-      cache_id = req.body.id,
-      hash_identify_device = req.body.hash_identify_device
-      supermercado_cache_id = supermercado_id
     }
 
     const data = {
@@ -205,7 +226,7 @@ exports.store = async (req, res) => {
           res.status(201).json({ ok: true, data: data_produto._doc })
         })
     } else {
-      res.status(201).send()
+      res.status(201).json({ ok: true, data: data_produto._doc })
     }
 
   } catch(err) {

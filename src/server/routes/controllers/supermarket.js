@@ -12,8 +12,6 @@ exports.store = async (req, res) => {
       nome, local, cache
     } = req.body
 
-    console.log(req.body)
-
     const { estado = {}, municipio = {} } = local
 
     const { nome: estado_nome, sigla: estado_sigla } = estado

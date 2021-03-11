@@ -599,6 +599,8 @@ exports.search = (req, res) => {
 exports.cacheToAPI = async (req, res) => {
   try {
     console.log('Finalizar cache')
+    // COISAS QUE DEVO FAZER
+    // - MUDAR O cache_id DO SUPERMERCADO NA ESTRUTURA DE PRECOS DOS PRODUTOS COM ESSE HASH PARA O _id DO SUPERMERCADO JÁ INSERIDO NO BANDO DE DADOS
     console.log(req.params)
     
   } catch(e) {

@@ -26,6 +26,7 @@ route
 	// Do cache para a api, sem autênticação
 	.post('/user/supermarket', supermarketControllers.store)
 	.post('/user/product', productControllers.store)
+	.post('/user/brand', brandControllers.store)
 	.post('/user/cache-to-api/:hash', userControllers.cacheToAPI)
 
 module.exports = app => app.use(route)

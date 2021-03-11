@@ -4,14 +4,14 @@ const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs')
 
 exports.hasEmpty = values => {
-  let valid = false
+  let has = false
 
   Object.values(values)
     .forEach((value, index) => {
-      valid = !valid && typeof value === 'string' && value.length
+      has = !has && (typeof value === 'string' && !value.length)
     })
 
-  return valid
+  return has
 }  
 
 exports.middleware = (...steps) => {
