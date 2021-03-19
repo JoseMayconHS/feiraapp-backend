@@ -17,6 +17,10 @@ const Product =  new Schema({
 		type: String,
 		required: true
 	},
+	nome_key: {
+		type: String,
+		required: true
+	},
 	favorito: {
 		type: Boolean,
 		default: false
@@ -56,13 +60,11 @@ const Product =  new Schema({
 				municipio_id: Number,
 				menor_preco: {
 					preco: String,
-					supermercado_id: String,
-					feira_id: String
+					supermercado_id: String
 				},
 				maior_preco: {
 					preco: String,
-					supermercado_id: String,
-					feira_id: String
+					supermercado_id: String
 				}
 			}]
 		}],
@@ -77,9 +79,8 @@ const Product =  new Schema({
 			type: String,
 			required: true
 		}
-	},
+	}
 	
-
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

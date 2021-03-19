@@ -24,6 +24,14 @@ const Supermarket =  new Schema({
 			nome: String,
 		}
 	},
+	local_estado_id: {
+		type: Number,
+		required: true,
+	},
+	local_municipio_id: {
+		type: Number,
+		required: true,
+	},
 	classificacao: {
 		type: Number,
 		default: 0

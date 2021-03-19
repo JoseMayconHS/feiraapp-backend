@@ -1,4 +1,8 @@
-const Product = require('../../../data/Schemas/Product'),
+
+const { Types } = require('mongoose'),
+  remove_accents = require('remove-accents'),
+  Product = require('../../../data/Schemas/Product'),
+  User = require('../../../data/Schemas/User'),
   Brand = require('../../../data/Schemas/Brand'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
   functions = require('../../../functions'),
@@ -13,31 +17,32 @@ function updateProduct({
     Product.findById(_id)
       .select('precos presenca')
       .then(product => {
+        // (XD) ERRO
         const prices = [ ...product.precos ]
-
+        
         let newPrices = []
-
+        
         const priceIndex = prices
-          .findIndex(({ estado_id }) => estado_id === estado.id)
-
+        .findIndex(({ estado_id }) => estado_id === estado.id)
+        
         if (priceIndex !== -1) {
-
+          
           const regionIndex = prices[priceIndex].municipios
-            .findIndex(({ municipio_id }) => municipio_id === municipio.id)
-
-          let municipios = prices[priceIndex].municipios
-
+          .findIndex(({ municipio_id }) => municipio_id === municipio.id)
+          
+          let municipios = prices[priceIndex].municipios.map(({ maior_preco, menor_preco, municipio_id, nome }) => ({ maior_preco, menor_preco, municipio_id, nome }))
+          
           let menor_preco = municipios[regionIndex].menor_preco
-          let maior_preco = municipios[regionIndex].maior_preco
-
-          if (+maior_preco.preco < +preco_u) {
-            maior_preco.preco = preco_u
-            maior_preco.supermercado_id = supermercado_id
-            maior_preco.feira_id = feira_id
-          } else if (+menor_preco.preco > +preco_u) {
+          let maior_preco = municipios[regionIndex].maior_preco || {}
+          
+          if ((+menor_preco.preco === 0) || (+menor_preco.preco > +preco_u)) {
             menor_preco.preco = preco_u
             menor_preco.supermercado_id = supermercado_id
             menor_preco.feira_id = feira_id
+          } else if ((+maior_preco.preco === 0) || (+maior_preco.preco < +preco_u)) {
+            maior_preco.preco = preco_u
+            maior_preco.supermercado_id = supermercado_id
+            maior_preco.feira_id = feira_id
           }
           
           if (regionIndex !== -1) {
@@ -47,12 +52,13 @@ function updateProduct({
             }
           }
 
+          
           prices[priceIndex] = {
             ...prices[priceIndex],
             municipios
           }
-
-          newPrices = prices
+          newPrices = [ ...prices ]
+          
         } else {
           newPices = [ ...prices, {
             estado_id: estado.id,
@@ -63,22 +69,23 @@ function updateProduct({
               nome: municipio.nome,
               menor_preco: {
                 preco: preco_u,
-                supermercado_id,
-                feira_id
+                supermercado_id
               }
             }]
           }]
         }
-
-        console.log({ newPrices })
-
+                
         const data_update = {
-          precos: newPrices
+          precos: newPrices.map(({ _doc, municipios }) => ({ ..._doc, municipios }))
         }
-
+        
         if (finished) {
           data_update.presenca = product.presenca + 1
         }
+        
+        console.log('updateProduct ', data_update.precos)
+
+        // return resolve('')
 
         Product
           .updateOne({ _id }, data_update)
@@ -104,10 +111,22 @@ exports.store = async (req, res) => {
       preco_u,
       produto_nome,
       tipo,
-      local,
+      local = {},
       supermercado_id,
-      cache
+      cache,
+      user_id = ''
     } = req.body
+
+    // {
+    //   fixado: false,
+    //   favorito: false,
+    //   peso: { tipo: 'unidade', valor: 1 },
+    //   quantidade: 1,
+    //   preco_u: 0,
+    //   produto_nome: 'Leide desnatado',
+    //   marca: { nome: 'Vale' },
+    //   tipo: 'bebida'
+    // }
 
     console.log('product.store ', req.body)
 
@@ -143,33 +162,40 @@ exports.store = async (req, res) => {
       supermercado_cache_id = supermercado_id
     }
 
+    let criar = true
+    let brand = false
+
     if ((cache && marca_id_cache) || !marca_id) {
-      let criar = true
-      let brand = false
 
       if (cache) {
         brand = await Brand.findById(marca_id_cache)
 
-        console.log({ brand })
-
         if (brand) {
           criar = false
         }
-      }
+      } 
 
-      if (criar) {
-        data_marca = await Brand.create({
-          nome: marca_nome,
-          descricao: marca_descricao,
-          hash_identify_device
-        })
-      } else {
-        data_marca = brand
+      
+    } else if (marca_id) {
+      brand = await Brand.findById(String(marca_id))
+      
+      if (brand) {
+        criar = false
       }
-
     }
 
-    const precos = [{
+    if (criar) {
+      data_marca = await Brand.create({
+        nome: marca_nome,
+        nome_key: marca_nome.toLowerCase(),
+        descricao: marca_descricao,
+        hash_identify_device
+      })
+    } else {
+      data_marca = brand
+    }
+
+    const precos = Object.values(local).length ? [{
       estado_id,
       nome: estado_nome,
       sigla: estado_sigla,
@@ -179,9 +205,13 @@ exports.store = async (req, res) => {
         menor_preco: {
           supermercado_id,
           preco: preco_u
+        },
+        maior_preco: {
+          supermercado_id: '',
+          preco: '0'
         }
       }]
-    }]
+    }] : []
 
     const marca_obj = {
       marca_id: data_marca._doc._id,
@@ -189,42 +219,55 @@ exports.store = async (req, res) => {
     }
 
     const data = {
-      nome: produto_nome, favorito, fixado, precos, marca: marca_obj, tipo, peso, 
+      nome: produto_nome, nome_key: remove_accents(produto_nome).toLocaleLowerCase(),
+      favorito, fixado, precos, marca: marca_obj, tipo, peso, 
       cache_id, hash_identify_device, supermercado_cache_id
     }
 
     const data_produto = await Product.create(data)
 
+    const user = await User.findById(user_id).select('produtos')
+
+    const user_products = [ {
+      _id: data_produto._doc._id
+    }, ...user.produtos ]
+
+    await User.updateOne({ _id: user_id }, { produtos: user_products })
+
     if (!cache) {
-      Supermarket
-        .findById(supermercado_id)
-        .select('produtos')
-        .then(supermarket => {
-  
-          let products = [ ...supermarket.produtos ]
-  
-          const productIndex = products.findIndex(({ produto_id }) => produto_id === String(data_produto._doc._id))
-  
-          if (productIndex !== -1) {
-            products[productIndex] = {
-              ...products[productIndex],
-              preco: preco_u
+      if (supermercado_id) {
+        Supermarket
+          .findById(supermercado_id)
+          .select('produtos')
+          .then(supermarket => {
+    
+            let products = [ ...supermarket.produtos ]
+    
+            const productIndex = products.findIndex(({ produto_id }) => produto_id === String(data_produto._doc._id))
+    
+            if (productIndex !== -1) {
+              products[productIndex] = {
+                ...products[productIndex],
+                preco: preco_u
+              }
+            } else {
+              products = [ ...products, {
+                produto_id: data_produto._doc._id,
+                preco: preco_u
+              }]
             }
-          } else {
-            products = [ ...products, {
-              produto_id: data_produto._doc._id,
-              preco: preco_u
-            }]
-          }
-  
-          Supermarket.findByIdAndUpdate(supermercado_id, {
-            produtos: products
+    
+            Supermarket.findByIdAndUpdate(supermercado_id, {
+              produtos: products
+            })
           })
-        })
-        .catch(console.error)
-        .finally(() => {
-          res.status(201).json({ ok: true, data: data_produto._doc })
-        })
+          .catch(console.error)
+          .finally(() => {
+            res.status(201).json({ ok: true, data: data_produto._doc })
+          })
+      } else {
+        res.status(201).json({ ok: true, data: data_produto._doc })
+      }
     } else {
       res.status(201).json({ ok: true, data: data_produto._doc })
     }
@@ -338,11 +381,13 @@ exports.update = (req, res) => {
 
     const { preco } = req.body
 
+    console.log('product.update ', req.body)
     if (preco) {
       const { 
         estado = {}, municipio = {}, 
         supermercado_id, preco: preco_u,
       } = preco
+
 
       const { nome: estado_nome } = estado
       const { nome: municipio_nome } = municipio
@@ -354,19 +399,19 @@ exports.update = (req, res) => {
       }
 
       Supermarket
-        .findById(supermercado_id)
+        .findOne({ _id: supermercado_id })
         .select('produtos')
         .then(supermarket => {
 
-          let products = [ ...supermarket.produtos ]
+          console.log({ supermarket })
 
+          let products = supermarket.produtos
+
+          console.log('supermarket.produtos ', products)
           const productIndex = products.findIndex(({ produto_id }) => produto_id === _id)
 
           if (productIndex !== -1) {
-            products[productIndex] = {
-              ...products[productIndex],
-              preco: preco_u
-            }
+            products[productIndex].preco = preco_u 
           } else {
             products = [ ...products, {
               produto_id: _id,
@@ -374,11 +419,17 @@ exports.update = (req, res) => {
             }]
           }
 
-          Supermarket.findByIdAndUpdate(supermercado_id, {
+
+          Supermarket.findByIdAndUpdate(supermarket._id, {
             produtos: products
           })
           .then(async () => {
             try {
+              console.log('updateProduct props ', {
+                _id, 
+                estado, municipio, 
+                supermercado_id, preco_u 
+              })
               await updateProduct({
                 _id, 
                 estado, municipio, 

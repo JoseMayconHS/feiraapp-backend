@@ -1,4 +1,5 @@
-const Product = require('../../../data/Schemas/Product'),
+const remove_accents = require('remove-accents'),
+  Product = require('../../../data/Schemas/Product'),
   Brand = require('../../../data/Schemas/Brand'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
   functions = require('../../../functions'),
@@ -28,7 +29,12 @@ exports.store = async (req, res) => {
       hash_identify_device = req.body.hash_identify_device
     }
 
-    Brand.create({ nome, descricao, cache_id, hash_identify_device })
+    console.log('brand.store ', req.body)
+
+    Brand.create({ 
+        nome, nome_key: remove_accents(nome).toLowerCase(), 
+        descricao, cache_id, hash_identify_device 
+      })
       .then(brand => {
         res.status(201).json({ ok: true, data: brand._doc })
       })
@@ -49,13 +55,13 @@ exports.indexAll = (req, res) => {
 
   try {
 
-    Product.countDocuments((err, count) => {
+    Brand.countDocuments((err, count) => {
       if (err) {
         res.status(500).send()
       } else {
         const { page = 1 } = req.params
 
-        Product.find()
+        Brand.find()
           .limit(limit)
           .skip((limit * page) - limit)
           .sort('-created_at')
@@ -113,22 +119,43 @@ exports.single = (req, res) => {
 }
 
 exports.indexBy = (req, res) => {
-  // NÃO UTILIZADO
-  // NÃO TESTATO
+  // OK
 
 	try {
-    let where = req.query || {}
+    let { where } = req.body
+
+    const { page = 1 } = req.params
+
     
-    Product.find(where)
+    if (where.nome_key) {
+      // RESOLVER PAGINACAO
+      const regex = new RegExp(`${ remove_accents(where.nome_key).toLocaleLowerCase()}+`)
+      
+      where.nome_key = { $regex: regex, $options: 'g' }
+    }
+    
+    console.log({ where, page })
+    
+    Brand.find(where)
+      .limit(limit)
+      .skip((limit * page) - limit)
       .sort('-created_at')
       .then(Documents => {
-        res.status(200).json({ ok: true, data: where._id ? Documents[0] : Documents })
+        const data = where._id ? Documents[0] : Documents.slice(((limit * page) - limit), limit * page)
+
+        res.status(200).json({ 
+          ok: true, 
+          data, 
+          count: Documents.length,
+          page, limit
+        })
       })
       .catch(_ => {
         res.status(500).send()
       })
 			
 	} catch(error) {
+    console.error(error)
 		res.status(500).send()
 	}
 

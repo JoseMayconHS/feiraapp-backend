@@ -33,7 +33,13 @@ exports.store = async (req, res) => {
       hash_identify_device = req.body.hash_identify_device
     }
 
-    Supermarket.create({ nome, local, cache_id, hash_identify_device })
+    const data = {
+      nome, local, cache_id, hash_identify_device,
+      local_estado_id: local.estado.id,
+      local_municipio_id: local.municipio.id,
+    }
+
+    Supermarket.create(data)
       .then(supermarket => {
         res.status(201).json({ ok: true, data: supermarket._doc })
       })
@@ -54,30 +60,55 @@ exports.indexAll = (req, res) => {
 
   try {
 
-    Supermarket.countDocuments((err, count) => {
-      if (err) {
-        res.status(500).send()
-      } else {
-        const { page = 1 } = req.params
-        let { limit: limitQuery } = req.query
+    const { where } = req.body
+    const { page = 1 } = req.params
+    let { limit: limitQuery } = req.query
 
-        if (!limitQuery) {
-          limitQuery = limit
+    if (!limitQuery) {
+      limitQuery = limit
+    }
+    if (where) {
+      Supermarket.find()
+        .populate()
+        .where('local.estado.id').in([where.local_estado_id])
+        .where('local.municipio.id').in([where.local_municipio_id])
+        .then(Documents => {
+          const count = Documents.length
+
+          Supermarket.find()
+            .populate()
+            .where('local.estado.id').in([where.local_estado_id])
+            .where('local.municipio.id').in([where.local_municipio_id])
+            .limit(limitQuery)
+            .skip((limitQuery * page) - limitQuery)
+            .sort('-created_at')
+            .then(Documents => {
+              res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
+            })
+            .catch(_ => {
+              res.status(500).send()
+            })
+        })
+    } else {
+      Supermarket.countDocuments((err, count) => {
+        if (err) {
+          res.status(500).send()
+        } else {  
+          Supermarket.find()
+            .limit(limitQuery)
+            .skip((limitQuery * page) - limitQuery)
+            .sort('-created_at')
+            .then(Documents => {
+              res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
+            })
+            .catch(_ => {
+              res.status(500).send()
+            })
+  
         }
+      })
+    }
 
-        Supermarket.find()
-          .limit(limitQuery)
-          .skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
-          })
-          .catch(_ => {
-            res.status(500).send()
-          })
-
-      }
-    })
 
   } catch(err) {
     console.error(err)

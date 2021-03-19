@@ -1,6 +1,9 @@
-const { resolve } = require('path')
 
 const bcryptjs = require('bcryptjs'),
+  { Types } = require('mongoose'),
+  remove_accents = require('remove-accents'),
+  Product = require('../../../data/Schemas/Product'),
+  Supermarket = require('../../../data/Schemas/Supermarket'),
   functions = require('../../../functions'),
   User = require('../../../data/Schemas/User'),
   generatePassword = require('generate-password'),
@@ -8,601 +11,822 @@ const bcryptjs = require('bcryptjs'),
   limit = +process.env.LIMIT_PAGINATION || 10,
   service_email_token = process.env.SERVICE_EMAIL_TOKEN || ''
 
-exports.generate = (req, res) => {
-  // OK
+// exports.generate = (req, res) => {
+//   // OK
 
-  try {
-    const { email, lang = 'pt' } = req.body
+//   try {
+//     const { email, lang = 'pt' } = req.body
 
-    const errors = {
-      nobody_with_this_email: {
-        pt: 'Ninguém com este e-mail',
-        us: 'No one with this email'
-      },
-      error_new_password_generator: {
-        pt: 'Erro ao gerar nova senha!',
-        us: 'Error generating new password!'
-      },
-      google_authenticated: {
-        pt: 'Essa conta é uma conta da Google',
-        us: 'This account is a Google account'
-      },
-      facebook_authenticated: {
-        pt: 'Essa conta é uma conta da Facebook',
-        us: 'This account is a Facebook account'
-      }
-    }
+//     const errors = {
+//       nobody_with_this_email: {
+//         pt: 'Ninguém com este e-mail',
+//         us: 'No one with this email'
+//       },
+//       error_new_password_generator: {
+//         pt: 'Erro ao gerar nova senha!',
+//         us: 'Error generating new password!'
+//       },
+//       google_authenticated: {
+//         pt: 'Essa conta é uma conta da Google',
+//         us: 'This account is a Google account'
+//       },
+//       facebook_authenticated: {
+//         pt: 'Essa conta é uma conta da Facebook',
+//         us: 'This account is a Facebook account'
+//       }
+//     }
 
-    User.findOne({ email }, '_id username google_auth facebook_auth', (error, user) => {
-      if (error) {
-        res.status(500).send()
-      } else {
+//     User.findOne({ email }, '_id username google_auth facebook_auth', (error, user) => {
+//       if (error) {
+//         res.status(500).send()
+//       } else {
 
-        if (!user) {
-          res.status(200).json({ ok: false, message: errors.nobody_with_this_email[lang] })
-        } else {
+//         if (!user) {
+//           res.status(200).json({ ok: false, message: errors.nobody_with_this_email[lang] })
+//         } else {
 
-          if (user.google_auth) {
-            return res.status(200).json({ ok: false, message: errors.google_authenticated[lang] })
-          }
+//           if (user.google_auth) {
+//             return res.status(200).json({ ok: false, message: errors.google_authenticated[lang] })
+//           }
 
-          if (user.facebook_auth) {
-            return res.status(200).json({ ok: false, message: errors.facebook_authenticated[lang] })
-          }
+//           if (user.facebook_auth) {
+//             return res.status(200).json({ ok: false, message: errors.facebook_authenticated[lang] })
+//           }
 
-          const password = generatePassword.generate({
-            length: 4,
-            numbers: true,
-            uppercase: false
-          })
+//           const password = generatePassword.generate({
+//             length: 4,
+//             numbers: true,
+//             uppercase: false
+//           })
       
-          const password_crypt = functions.criptor(password)
+//           const password_crypt = functions.criptor(password)
 
-          User.updateOne({ _id: user._id }, { second_password: password_crypt }, async (error) => {
-            if (error) {
-              res.status(200).json({ ok: false, message: errors.error_new_password_generator[lang] })
-            } else {
+//           User.updateOne({ _id: user._id }, { second_password: password_crypt }, async (error) => {
+//             if (error) {
+//               res.status(200).json({ ok: false, message: errors.error_new_password_generator[lang] })
+//             } else {
 
-              try {
-                // NÃO DA PRA POR POST PORQUÊ FormData NÃO EXISTE NO CONTEXTO DO NODE
+//               try {
+//                 // NÃO DA PRA POR POST PORQUÊ FormData NÃO EXISTE NO CONTEXTO DO NODE
 
-                const title = lang === 'us' ? 'Redefine password' : 'Redefinir senha'
+//                 const title = lang === 'us' ? 'Redefine password' : 'Redefinir senha'
 
-                const query = `titulo=${ title }&senha=${ password }&destinatario=${ email }&nome=${ user.username }&token=${ service_email_token }&lang=${ lang }`
+//                 const query = `titulo=${ title }&senha=${ password }&destinatario=${ email }&nome=${ user.username }&token=${ service_email_token }&lang=${ lang }`
                 
-                await service_email(`?${ query }`)
+//                 await service_email(`?${ query }`)
 
-                res.status(200).json({ ok: true, data: password }) 
-              } catch(e) {
-                res.status(500).send()
-              }
+//                 res.status(200).json({ ok: true, data: password }) 
+//               } catch(e) {
+//                 res.status(500).send()
+//               }
       
-            }
-          })
+//             }
+//           })
 
-        }
+//         }
 
-      }
-    })
-
-
-  } catch(e) {
-    res.status(500).send(e)
-  }
-}
+//       }
+//     })
 
 
-exports.qtd = (req, res) => {
-  try {
+//   } catch(e) {
+//     res.status(500).send(e)
+//   }
+// }
 
-      User.countDocuments((err, count) => {
-        if (err) {
-          res.status(500).send(err)
-        } else {
-          res.status(200).json({ count })
-        }
-      })
+
+// exports.qtd = (req, res) => {
+//   try {
+//       User.countDocuments((err, count) => {
+//         if (err) {
+//           res.status(500).send(err)
+//         } else {
+//           res.status(200).json({ count })
+//         }
+//       })
     
-  } catch(err) {
-    res.status(500).send(err)
-  }
-}
+//   } catch(err) {
+//     res.status(500).send(err)
+//   }
+// }
 
-exports.indexAll = (req, res) => {
-  // OK
+// exports.indexAll = (req, res) => {
+//   // OK
 
-  try {
+//   try {
 
-    User.countDocuments((err, count) => {
-      if (err) {
-        res.status(500).send()
-      } else {
-        const { page } = req.params
+//     User.countDocuments((err, count) => {
+//       if (err) {
+//         res.status(500).send()
+//       } else {
+//         const { page } = req.params
 
-        User.find()
-          .limit(limit)
-          .skip((limit * page) - limit)
-          .sort('-created_at')
-          .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, limit, count })
-          })
-          .catch(_ => {
-            res.status(500).send()
-          })
-      }
-    })
+//         User.find()
+//           .limit(limit)
+//           .skip((limit * page) - limit)
+//           .sort('-created_at')
+//           .then(Documents => {
+//             res.status(200).json({ ok: true, data: Documents, limit, count })
+//           })
+//           .catch(_ => {
+//             res.status(500).send()
+//           })
+//       }
+//     })
 
-  } catch(e) {
-    res.status(500).send()
-  }
-}
+//   } catch(e) {
+//     res.status(500).send()
+//   }
+// }
 
-exports.single = (req, res) => {
-  // OK
+// exports.field = async (req, res) => {
+//   try {
 
-  try {
+//     const { field } = req.params
 
-    const { id } = req.params
+//     const { where = {}, page = 1 } = req.body
 
-    User.findById(id)
-      .then(single => {
-        if (single) {
-          res.status(200).json(single)
-        } else {
-          res.status(400).send()  
-        }
-      })
-      .catch(_ => {
-        res.status(500).send()
-      })
+//     console.log({ where })
 
-  } catch(e) {
-    res.status(500).send()
-  }
-}
+//     if (!field) return res.status(400).send()
 
-exports.store = async (req, res) => {
-  // ok
+//     User.findById(req._id).select(field)
+//       .then(async user => {
+//         console.log('field ', { field })
 
-  try {    
-    const { 
-      username, email, expo_token = 'sem-token', lang = 'pt',
-      local = {},
-      facebook_id = '', google_id = ''
-    } = req.body
+//         if (field === 'produtos') {
 
-    let { password = '' } = req.body
+//           const where_rest = {}
 
-    const { estado = {}, municipio = {} } = local
-
-    let status = 500
-
-    if (functions.hasEmpty({
-      username, email, 
-    })) {
-      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-    }
-
-    if (!facebook_id.length && !google_id.length) {
-      if (!Object.values(estado).length || !Object.values(municipio).length) {
-        return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-      }
-    }
-
-    User.findOne({ email })
-      .select('local _id facebook_auth google_auth')
-      .then(async userByEmail => {
-
-        if (
-          (!userByEmail) || (facebook_id.length || google_id.length)
-        ) {
-
-          try {
+//           if (where.tipos.some(type => type === 'todos')) {
             
-            let expo_tokenAlreadyExists = false
+//           } else if (where.tipos.some(type => type === 'meus')) {
+//             const _ids = user.produtos.map(({ _id}) => new Types.ObjectId(_id))
+
+//             where_rest._id = { $in: _ids }
+//           }
+
+//           if (where.tipos.some(type => type === 'favorito')) {
+//             where_rest.favorito = true
+//           }
+
+//           if (
+//             where.tipos.some(type => type === 'meus') || 
+//             where.tipos.some(type => type === 'todos')
+//           ) {
+//             if (
+//               (where.tipos.length > 2 && where.tipos.some(type => type === 'favorito')) ||
+//               (where.tipos.length > 1 && !where.tipos.some(type => type === 'favorito')) 
+//             ) {
+//               where_rest.tipo = { $in: where.tipos }
+//             }
+//           }
+
+//           if (typeof where.nome === 'string' && where.nome.length) {
+//             const regex = new RegExp(remove_accents(where.nome) .toLocaleLowerCase())
+
+//             where_rest.nome_key = { $regex: regex, $options: 'g' }
+//           }
+
+//           console.log({ where_rest })
+
+//           let products = await Product
+//             .find({ ...where_rest }).select('_id')
+
+//           const count = products.length
+
+//           products = await Product
+//             .find({ ...where_rest })
+//             .limit(limit)
+//             .skip((limit * page) - limit)
+//             .sort('-created_at')
+
+//           res.status(200).json({ ok: true, data: products, count, limit, page  })
+
+//         } else if (field === 'compras') {
+//           res.status(200).json({ ok: true, data: user.compras })
+//         } else {
+//           res.status(400).send()
+//         }
+      
+//       }).catch(e => {
+//         console.error(e)
+//         res.status(500).send()
+//       })
+//   } catch(e) {
+//     console.error(e)
+//     res.status(500).send()
+//   }
+// }
+
+// exports.single = (req, res) => {
+//   // OK
+
+//   try {
+
+//     const { id } = req.params
+
+//     User.findById(id)
+//       .then(single => {
+//         if (single) {
+//           res.status(200).json(single)
+//         } else {
+//           res.status(400).send()  
+//         }
+//       })
+//       .catch(_ => {
+//         res.status(500).send()
+//       })
+
+//   } catch(e) {
+//     res.status(500).send()
+//   }
+// }
+
+// exports.store = async (req, res) => {
+//   // ok
+
+//   try {    
+//     const { 
+//       username, email, expo_token = 'sem-token', lang = 'pt',
+//       local = {},
+//       facebook_id = '', google_id = ''
+//     } = req.body
+
+//     let { password = '' } = req.body
+
+//     const { estado = {}, municipio = {} } = local
+
+//     let status = 500
+
+//     if (functions.hasEmpty({
+//       username, email, 
+//     })) {
+//       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+//     }
+
+//     if (!facebook_id.length && !google_id.length) {
+//       if (!Object.values(estado).length || !Object.values(municipio).length) {
+//         return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+//       }
+//     }
+
+//     User.findOne({ email })
+//       .select('local _id facebook_auth google_auth')
+//       .then(async userByEmail => {
+
+//         if (
+//           (!userByEmail) || (facebook_id.length || google_id.length)
+//         ) {
+
+//           try {
             
-            if (!google_id.length && !facebook_id.length) {
-              password = functions.criptor(password)
-            }
+//             let expo_tokenAlreadyExists = false
             
-            User.findOne({ expo_token })
-            .select('_id')
-            .then(userByExpoToken => {
-              expo_tokenAlreadyExists = !!userByExpoToken
-            }).catch(() => {})
-            .finally(async () => {
-              try {
-                let newUser 
-
-                const data = { 
-                  username: username.trim(), 
-                  email, password, local,
-                  expo_token: expo_tokenAlreadyExists ? '' : expo_token,
-                  facebook_auth: !!facebook_id.length,
-                  google_auth: !!google_id.length,
-                  facebook_id, google_id
-                }
-
-                if (
-                  (userByEmail) && (facebook_id.length || google_id.length) && (!userByEmail.facebook_auth && !userByEmail.google_auth)
-                  ) {
-                    console.log(`Transformar em login com o ${ facebook_id.length ? 'Facebook' : 'Google' }`)
-
-                    delete data.local
-
-                    newUser = await User.findByIdAndUpdate(userByEmail._id, data, { new: true })
-
-                  } else if (userByEmail && (userByEmail.facebook_auth || userByEmail.google_auth)) {
-                    if (Object.values(estado).length) {
-                      newUser = await User.findByIdAndUpdate(userByEmail._id, { local }, { new: true })
-                    } else {
-                      return res.status(200).json({ 
-                        ok: false, message: 'E-mail já cadastrado', 
-                        social_network: true,
-                        localSeted: userByEmail.local
-                      })
-                    }
-                  } else {
-                    newUser = await User.create(data)
-                  }
-
-                  const token = await functions.token(newUser._doc._id)
-
-                  res.status(201).json({ 
-                    ok: true, 
-                    data: { ...newUser._doc, password: undefined }, 
-                    token 
-                  })
-                } catch(e) {
-                  res.status(400).json({ ok: false, message: 'Não criado!' })
-                }
-              })
+//             if (!google_id.length && !facebook_id.length) {
+//               password = functions.criptor(password)
+//             }
             
-          } catch(error) {
-            res.status(status).send()
-          }
+//             User.findOne({ expo_token })
+//             .select('_id')
+//             .then(userByExpoToken => {
+//               expo_tokenAlreadyExists = !!userByExpoToken
+//             }).catch(() => {})
+//             .finally(async () => {
+//               try {
+//                 let newUser 
 
-        } else {
-          res.status(200).json({ 
-            ok: false, message: 'E-mail já cadastrado', 
-            social_network: !!google_id.length || !!facebook_id.length,
-            localSeted: userByEmail.local
-          })
-        }
+//                 const data = { 
+//                   username: username.trim(), 
+//                   email, password, local,
+//                   expo_token: expo_tokenAlreadyExists ? '' : expo_token,
+//                   facebook_auth: !!facebook_id.length,
+//                   google_auth: !!google_id.length,
+//                   facebook_id, google_id
+//                 }
 
-      }).catch(e => {
-        res.status(500).send(e)
-      })
+//                 if (
+//                   (userByEmail) && (facebook_id.length || google_id.length) && (!userByEmail.facebook_auth && !userByEmail.google_auth)
+//                   ) {
+//                     console.log(`Transformar em login com o ${ facebook_id.length ? 'Facebook' : 'Google' }`)
 
-  } catch(error) {
-    res.status(500).send()
-  }
-}
+//                     delete data.local
 
-exports.update = (req, res) => {
-  // OK
+//                     newUser = await User.findByIdAndUpdate(userByEmail._id, data, { new: true })
 
-  try {
+//                   } else if (userByEmail && (userByEmail.facebook_auth || userByEmail.google_auth)) {
+//                     if (Object.values(estado).length) {
+//                       newUser = await User.findByIdAndUpdate(userByEmail._id, { local }, { new: true })
+//                     } else {
+//                       return res.status(200).json({ 
+//                         ok: false, message: 'E-mail já cadastrado', 
+//                         social_network: true,
+//                         localSeted: userByEmail.local
+//                       })
+//                     }
+//                   } else {
+//                     newUser = await User.create(data)
+//                   }
 
-    if (!req._id) throw new Error()
+//                   const token = await functions.token(newUser._doc._id)
 
-    const errors = {
-      changed_success: {
-        pt: 'Alterado com sucesso',
-        us: 'Successfully changed'
-      }
-    }
+//                   res.status(201).json({ 
+//                     ok: true, 
+//                     data: { ...newUser._doc, password: undefined }, 
+//                     token 
+//                   })
+//                 } catch(e) {
+//                   res.status(400).json({ ok: false, message: 'Não criado!' })
+//                 }
+//               })
+            
+//           } catch(error) {
+//             res.status(status).send()
+//           }
 
-    User.findById(req._id)
-      .then(user => {
-        try {
+//         } else {
+//           res.status(200).json({ 
+//             ok: false, message: 'E-mail já cadastrado', 
+//             social_network: !!google_id.length || !!facebook_id.length,
+//             localSeted: userByEmail.local
+//           })
+//         }
 
-          const { lang = 'pt' } = req.body
+//       }).catch(e => {
+//         res.status(500).send(e)
+//       })
 
-          if (req.body.username) {
-            if (req.body.username === user.username)
-              throw lang === 'us' ? 'The name is the same' : 'O nome é o mesmo'
-          }
+//   } catch(error) {
+//     res.status(500).send()
+//   }
+// }
 
-          if (req.body.email) {
-            if (req.body.email === user.email)
-              throw lang === 'us' ? 'The email is the same' : 'O e-mail é o mesmo'
-          }
+// exports.update = (req, res) => {
+//   // OK
 
-          if (req.body.password) {
-            req.body.password = functions.criptor(req.body.password)
-          }
+//   try {
 
-          User.updateOne({ _id: req._id }, req.body)
-            .then(_ => {
-              res.status(200).json({ ok: true, message: errors.changed_success[lang] })
-            })
-            .catch(e => {
-              res.status(500).send(e)
-            })
+//     if (!req._id) return res.status(400).send()
 
-        } catch(message) {
-          res.status(200).json({ ok: false, message })
-        }
-      })    
+//     const errors = {
+//       changed_success: {
+//         pt: 'Alterado com sucesso',
+//         us: 'Successfully changed'
+//       }
+//     }
 
-  } catch(e) {
-    res.status(500).send()
-  }
-}
+//     User.findById(req._id)
+//       .then(user => {
+//         try {
+
+//           const { lang = 'pt' } = req.body
+
+//           if (req.body.username) {
+//             if (req.body.username === user.username)
+//               throw lang === 'us' ? 'The name is the same' : 'O nome é o mesmo'
+//           }
+
+//           if (req.body.email) {
+//             if (req.body.email === user.email)
+//               throw lang === 'us' ? 'The email is the same' : 'O e-mail é o mesmo'
+//           }
+
+//           if (req.body.password) {
+//             req.body.password = functions.criptor(req.body.password)
+//           }
+
+//           User.updateOne({ _id: req._id }, req.body)
+//             .then(_ => {
+//               res.status(200).json({ ok: true, message: errors.changed_success[lang] })
+//             })
+//             .catch(e => {
+//               res.status(500).send(e)
+//             })
+
+//         } catch(message) {
+//           res.status(200).json({ ok: false, message })
+//         }
+//       })    
+
+//   } catch(e) {
+//     res.status(500).send()
+//   }
+// }
 
 
-exports.sign = (req, res) => {
-  // OK
+// exports.sign = (req, res) => {
+//   // OK
 
-  try {
+//   try {
 
-    const { 
-      email, password, 
-      expo_token = 'sem-token', lang = 'pt', 
-      google_id, facebook_id
-    } = req.body
+//     const { 
+//       email, password, 
+//       expo_token = 'sem-token', lang = 'pt', 
+//       google_id, facebook_id
+//     } = req.body
 
-    const errors = {
-      error_generating_token: {
-        pt: 'Erro ao gerar token! 💥',
-        us: 'Error generating token! 💥'
-      },
-      no_user: {
-        pt: 'Ninguém com este e-mail',
-        us: 'No one with this email'
-      },
-      invalid_password: {
-        pt: 'Senha inválida',
-        us: 'invalid password'
-      },
-      disabled: {
-        pt: 'No momento, sua conta está desativada! ⏳',
-        us: 'Your account is currently disabled! ⏳'
-      },
-      is_a_facebook_account: {
-        pt: 'Conecte através do Facebook',
-        us: 'Connect via Facebook'
-      },
-      is_a_google_account: {
-        pt: 'Conecte através do Google',
-        us: 'Connect via Google'
-      },
+//     const errors = {
+//       error_generating_token: {
+//         pt: 'Erro ao gerar token! 💥',
+//         us: 'Error generating token! 💥'
+//       },
+//       no_user: {
+//         pt: 'Ninguém com este e-mail',
+//         us: 'No one with this email'
+//       },
+//       invalid_password: {
+//         pt: 'Senha inválida',
+//         us: 'invalid password'
+//       },
+//       disabled: {
+//         pt: 'No momento, sua conta está desativada! ⏳',
+//         us: 'Your account is currently disabled! ⏳'
+//       },
+//       is_a_facebook_account: {
+//         pt: 'Conecte através do Facebook',
+//         us: 'Connect via Facebook'
+//       },
+//       is_a_google_account: {
+//         pt: 'Conecte através do Google',
+//         us: 'Connect via Google'
+//       },
 
-    }
+//     }
 
-    User.findOne({ email: email.trim() })
-      .then(user => {
+//     User.findOne({ email: email.trim() })
+//       .then(user => {
 
-        try {
-          let bySecondPassword = false
+//         try {
+//           let bySecondPassword = false
 
-          let updateExpoToken = false
+//           let updateExpoToken = false
 
-          let error = false
+//           let error = false
 
-          if (!user) {
-           throw errors.no_user[lang]
-          } 
+//           if (!user) {
+//            throw errors.no_user[lang]
+//           } 
 
-          if (!user.google_auth && !user.facebook_auth) {
-            if (bcryptjs.compareSync(password.trim().toLowerCase(), user._doc.second_password)) {
-              bySecondPassword = true
-            }
+//           if (!user.google_auth && !user.facebook_auth) {
+//             if (bcryptjs.compareSync(password.trim().toLowerCase(), user._doc.second_password)) {
+//               bySecondPassword = true
+//             }
   
-            if (!bySecondPassword && !bcryptjs.compareSync(password.trim().toLowerCase(), user._doc.password)) {
-              throw errors.invalid_password[lang]
-            }
-          } else {
-            if (user.google_auth) {
-              if (user.google_id !== google_id) {
-                throw errors.is_a_google_account[lang]
-              }
-            }
+//             if (!bySecondPassword && !bcryptjs.compareSync(password.trim().toLowerCase(), user._doc.password)) {
+//               throw errors.invalid_password[lang]
+//             }
+//           } else {
+//             if (user.google_auth) {
+//               if (user.google_id !== google_id) {
+//                 throw errors.is_a_google_account[lang]
+//               }
+//             }
 
-            if (user.facebook_auth) {
-              if (user.facebook_id !== facebook_id) {
-                throw errors.is_a_facebook_account[lang]
-              }
-            }
-          }
+//             if (user.facebook_auth) {
+//               if (user.facebook_id !== facebook_id) {
+//                 throw errors.is_a_facebook_account[lang]
+//               }
+//             }
+//           }
 
-          if (!user.status)
-            throw errors.disabled[lang]
+//           if (!user.status)
+//             throw errors.disabled[lang]
 
-          const ok = async () => {
+//           const ok = async () => {
 
-            User.findOne({ expo_token })
-              .select('_id')
-              .then(async userByExpoToken => {
-                try {
-                  updateExpoToken = !userByExpoToken || (String(userByExpoToken._id) === String(user._doc._id) && expo_token !== user._doc.expo_token)
+//             User.findOne({ expo_token })
+//               .select('_id')
+//               .then(async userByExpoToken => {
+//                 try {
+//                   updateExpoToken = !userByExpoToken || (String(userByExpoToken._id) === String(user._doc._id) && expo_token !== user._doc.expo_token)
 
-                  if (updateExpoToken) {
-                    await User.findByIdAndUpdate(user._id, { expo_token }).exec()
-                  }
-                } catch(e) {
+//                   if (updateExpoToken) {
+//                     await User.findByIdAndUpdate(user._id, { expo_token }).exec()
+//                   }
+//                 } catch(e) {
                   
-                }
-              })
-              .catch(() => {})
-              .finally(() => {
-                if (!error) {
-                  functions.token(user._doc._id)
-                    .then(token => {
-                      res.status(200).json(
-                        { ok: true, 
-                          data: { ...user._doc, password: undefined, second_password: undefined }, 
-                          token, 
-                          second_password: bySecondPassword 
-                        }
-                      )
-                    })
-                    .catch(() => {
-                      res.status(200).json({ ok: false, message: errors.error_generating_token[lang] })
-                    }) 
-                } else {
-                  res.status(200).json({ ok: false, message: lang === 'pt' ? 'Ocorreu um erro' : 'An error has occurred' })
-                }
-              })
+//                 }
+//               })
+//               .catch(() => {})
+//               .finally(() => {
+//                 if (!error) {
+//                   functions.token(user._doc._id)
+//                     .then(token => {
+//                       res.status(200).json(
+//                         { ok: true, 
+//                           data: { ...user._doc, password: undefined, second_password: undefined }, 
+//                           token, 
+//                           second_password: bySecondPassword 
+//                         }
+//                       )
+//                     })
+//                     .catch(() => {
+//                       res.status(200).json({ ok: false, message: errors.error_generating_token[lang] })
+//                     }) 
+//                 } else {
+//                   res.status(200).json({ ok: false, message: lang === 'pt' ? 'Ocorreu um erro' : 'An error has occurred' })
+//                 }
+//               })
 
-          }
+//           }
 
-          if (bySecondPassword) {
-            User.updateOne(({ _id: user._doc._id }, { second_password: '' }), ok)
-          } else {
-            ok()
-          }        
+//           if (bySecondPassword) {
+//             User.updateOne(({ _id: user._doc._id }, { second_password: '' }), ok)
+//           } else {
+//             ok()
+//           }        
                     
-        } catch(message) {
-          res.status(200).json({ ok: false, message: typeof message === 'string' ? message : lang === 'pt' ? 'Ocorreu um erro' : 'An error has occurred' })
-        }
-      })
-      .catch(_ => {
-        res.status(500).send()
-      })
+//         } catch(message) {
+//           res.status(200).json({ ok: false, message: typeof message === 'string' ? message : lang === 'pt' ? 'Ocorreu um erro' : 'An error has occurred' })
+//         }
+//       })
+//       .catch(_ => {
+//         res.status(500).send()
+//       })
 
 
-  } catch(error) {
-    res.status(500).send()
-  }
-}
+//   } catch(error) {
+//     res.status(500).send()
+//   }
+// }
 
-exports.logout = (req, res) => {
-  try {
+// exports.logout = (req, res) => {
+//   try {
 
-    if (!req._id) throw new Error();
+//     if (!req._id) return res.status(400).send()
 
-    User.findByIdAndUpdate(req._id, { expo_token: 'token-retirado' })
-      .then(() => {})
-      .catch(() => {})
-      .finally(() => {
-        res.status(200).send()
-      })
+//     User.findByIdAndUpdate(req._id, { expo_token: 'token-retirado' })
+//       .then(() => {})
+//       .catch(() => {})
+//       .finally(() => {
+//         res.status(200).send()
+//       })
 
-  } catch(e) {
-    res.status(500).send()
-  }
-}
+//   } catch(e) {
+//     res.status(500).send()
+//   }
+// }
 
-exports.remove = (req, res) => {
-  // OK
+// exports.remove = (req, res) => {
+//   // OK
 
-  try {
+//   try {
 
-    const { id: _id } = req.params
+//     const { id: _id } = req.params
 
-    User.deleteOne({ _id })
-      .then(() => {
-        res.status(200).send()
-      })
-      .catch(() => {
-        res.status(500).send()
-      })
+//     User.deleteOne({ _id })
+//       .then(() => {
+//         res.status(200).send()
+//       })
+//       .catch(() => {
+//         res.status(500).send()
+//       })
 
-  } catch(e) {
-    res.status(500).send()
-  }
-}
+//   } catch(e) {
+//     res.status(500).send()
+//   }
+// }
 
 
 
-exports.reconnect = (req, res) => {
-  // OK
+// exports.reconnect = (req, res) => {
+//   // OK
 
-  try {
-    if (!req._id) throw new Error();
+//   try {
+//     if (!req._id) return res.status(400).send()
 
-    const errors = {
-      error_generating_token: {
-        pt: 'Erro ao gerar token! 💥',
-        us: 'Error generating token! 💥'
-      },
-      account_disabled: {
-        pt: 'A sua conta está desativada!',
-        us: 'Your account is disabled!'
-      },
-      your_account_not_exists: {
-        pt: 'Sua conta foi excluída',
-        us: 'Your account has been deleted'
-      }
-    }
+//     const errors = {
+//       error_generating_token: {
+//         pt: 'Erro ao gerar token! 💥',
+//         us: 'Error generating token! 💥'
+//       },
+//       account_disabled: {
+//         pt: 'A sua conta está desativada!',
+//         us: 'Your account is disabled!'
+//       },
+//       your_account_not_exists: {
+//         pt: 'Sua conta foi excluída',
+//         us: 'Your account has been deleted'
+//       }
+//     }
 
-    User.findById(req._id)
-      .then((user) => {
-        if (user) {
+//     User.findById(req._id)
+//       .then((user) => {
+//         if (user) {
 
-          if (!user.status) {
-            return res.status(200).json({
-              ok: false,
-              message: errors.account_disabled[user.language]
-            })
-          }
+//           if (!user.status) {
+//             return res.status(200).json({
+//               ok: false,
+//               message: errors.account_disabled[user.language]
+//             })
+//           }
 
-          functions
-            .token(req._id)
-            .then((token) => {
-              res
-                .status(200)
-                .json({
-                  ok: true,
-                  data: {
-                    ...user._doc,
-                    password: undefined,
-                  },
-                  token
-                });
-            })
-            .catch(() => {
-              res
-                .status(200)
-                .json({ ok: false, message: errors.error_generating_token[user.language] });
-            }); 
-        } else {
-          res.status(200).json({
-            ok: false,
-            message: errors.your_account_not_exists[user.language]
-          })
-        }
+//           functions
+//             .token(req._id)
+//             .then((token) => {
+//               res
+//                 .status(200)
+//                 .json({
+//                   ok: true,
+//                   data: {
+//                     ...user._doc,
+//                     password: undefined,
+//                   },
+//                   token
+//                 });
+//             })
+//             .catch(() => {
+//               res
+//                 .status(200)
+//                 .json({ ok: false, message: errors.error_generating_token[user.language] });
+//             }); 
+//         } else {
+//           res.status(200).json({
+//             ok: false,
+//             message: errors.your_account_not_exists[user.language]
+//           })
+//         }
         
-      })
-      .catch(() => {
-        res.status(500).send();
-      });
-  } catch (err) {
-    res.status(500).send(err);
-  }
-};
+//       })
+//       .catch(() => {
+//         res.status(500).send();
+//       });
+//   } catch (err) {
+//     res.status(500).send(err);
+//   }
+// };
 
-exports.search = (req, res) => {
-  // OK
+// exports.search = (req, res) => {
+//   // OK
 
-	try {
+// 	try {
 
-		const { word } = req.params
+// 		const { word } = req.params
 
-    const condition = new RegExp(word.trim(), 'gi')
+//     const condition = new RegExp(word.trim(), 'gi')
     
-		User.find()
-			// .limit(limit)
-			// .skip((limit * page) - limit)
-			.sort('-created_at')
-			.then(all => all.filter(({ username, email }) => username.search(condition) >= 0 ||  email.search(condition) >= 0))
-			.then(filtered => res.status(200).json({ ok: true, data: filtered, limit, count: filtered.length }))
-			.catch(err => res.status(400).send(err))
+// 		User.find()
+// 			// .limit(limit)
+// 			// .skip((limit * page) - limit)
+// 			.sort('-created_at')
+// 			.then(all => all.filter(({ username, email }) => username.search(condition) >= 0 ||  email.search(condition) >= 0))
+// 			.then(filtered => res.status(200).json({ ok: true, data: filtered, limit, count: filtered.length }))
+// 			.catch(err => res.status(400).send(err))
 
-	} catch(err) {
-		res.status(500).json(err)
-	}
-}
+// 	} catch(err) {
+// 		res.status(500).json(err)
+// 	}
+// }
 
 exports.cacheToAPI = async (req, res) => {
   try {
+    const { hash: hash_identify_device = '' } = req.params
+    const { cache = {} } = req.body
+
+    if (functions.hasEmpty({
+      hash_identify_device
+    })) {
+      return res.status(400).send()
+    }
+
+    const { supermercado, marca, produto } = cache
+
     console.log('Finalizar cache')
     // COISAS QUE DEVO FAZER
     // - MUDAR O cache_id DO SUPERMERCADO NA ESTRUTURA DE PRECOS DOS PRODUTOS COM ESSE HASH PARA O _id DO SUPERMERCADO JÁ INSERIDO NO BANDO DE DADOS
-    console.log(req.params)
+    // - ADICIONAR OS PRODUTOS E VALORES NOS SUPERMERCADOS
+
+    if (produto) {
+      const products = await Product.find({ hash_identify_device }).select('supermercado_cache_id precos cache_id marca _id')
+
+      const productsFunctions = products.map(({ supermercado_cache_id, _id, precos }) => ({
+        async fn() {
+          try {
+            const supermarket = await Supermarket.findOne({ cache_id: supermercado_cache_id, hash_identify_device }).select('local _id produtos')
+            // REFERENCIANDO O _id DO SUPERMERCADO NOS MAIORES E MENORES PRECOS DO PRODUTO
+            const priceIndex = precos.findIndex(({ estado_id }) => estado_id === supermarket._doc.local.estado.id)
+
+            const { municipios } = precos[priceIndex]
+
+            const regionIndex = municipios.findIndex(({ municipio_id }) => municipio_id === supermarket._doc.local.municipio.id)
+
+            const price_copy = municipios.map((preco, index) => index === regionIndex ? {
+              ...preco,
+              menor_preco: {
+                ...preco.menor_preco,
+                supermercado_id: supermarket._doc._id
+              }
+            } : preco)
+
+            const prices_copy = precos.map((preco, index) => index === priceIndex ? {
+              ...preco,
+              municipios: [ ...price_copy ]
+            } : preco)
+
+            await Product.findByIdAndUpdate(_id, { precos: prices_copy, hash_identify_device: '' })
+
+            // FIM
+
+            // ADICIONANDO O PRODUTO NO SUPERMERCADO
+
+            const newProducts = [{
+              produto_id: _id,
+              preco: municipios[regionIndex].menor_preco.preco
+            }, ...supermarket.produtos]
+
+            await Supermarket.updateOne({ _id: supermarket._id }, { produtos: newProducts, hash_identify_device: '' })
+
+          } catch(e) {
+            console.error(e)
+          }
+        }
+      }))
+
+      await functions.middlewareAsync(...productsFunctions)
+    }
+
+
+  } catch(e) {
+    console.error(e)
+    res.status(500).send()
+  }
+}
+
+exports.shopping = async (req, res) => {
+  try {
+    const { 
+      descricao, local, produtos, 
+      supermercado, favorito, data, 
+      hash_identify_device = ''
+    } = req.body
+
+    console.log('user.shopping ', req.body)
     
+    let supermarket = {}
+    
+    if (typeof supermercado.id === 'number') {
+      supermarket = await Supermarket.findOne({ cache_id: supermercado.id, hash_identify_device })
+    }
+
+    const compra = {
+      descricao, local, favorito, data, produtos: [], supermercado: {}
+    }
+
+    if (supermarket && supermarket._doc) {
+      compra.supermercado._id = supermarket._doc._id
+    } else {
+      compra.supermercado.cache_id = supermercado.id
+    }
+
+    const productsMiddleware = produtos.map(({ produto_id, quantidade, preco_u }) => ({
+      async fn() {
+        try {
+          let product
+
+          if (typeof produto_id === 'string') {
+            product = await Product.findById(produto_id)
+          } else {
+            product = await Product.findOne({ cache_id: produto_id, hash_identify_device })
+          }
+
+          if (product) {
+            const produto_rest = {}
+
+            if (typeof produto_id === 'number') {
+              produto_rest.cache_id = produto_id
+            }
+
+            compra.produtos.push({
+              produto_id: {
+                _id: product._doc._id, ...produto_rest
+              },
+              quantidade, preco: preco_u
+            })
+          } else {
+            compra.produtos.push({
+              produto_id: {
+                cache_id: produto_id
+              },
+              quantidade, preco: preco_u
+            })
+          }
+
+        } catch(e) {
+          console.error(e)
+        }
+      }
+    }))
+
+    await functions.middlewareAsync(...productsMiddleware) 
+
+    // const { compras: shoppings } = await User.findById(req._id).select('compras')
+
+    console.log('user.shopping - compra', compra)
+
+    // const { compras } = await User.findByIdAndUpdate(req._id, { compras: [compra, ...shoppings] }, { new: true }).select('compras')
+    
+    res.status(200).json({ ok: true, data: '_id provisorio' })
+
   } catch(e) {
     console.error(e)
     res.status(500).send()

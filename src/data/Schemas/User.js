@@ -57,7 +57,87 @@ const User = new Schema({
 			id: Number,
 			nome: String,
 		}
-  }
+	},
+	produtos: {
+		type: [{
+			cache_id: {
+				type: Number,
+				default: 0
+			},
+			_id: {
+				type: String,
+				default: ''
+			}
+		}],
+		default: []
+	},
+	compras: {
+		type: [{
+			supermercado_id: {
+				type: {
+					cache_id: {
+						type: Number,
+						default: 0
+					},
+					_id: {
+						type: String,
+						default: ''
+					}
+				}, 
+				default: {}
+			},
+			descricao: {
+				type: String,
+				default: ''
+			},
+			favorito: {
+				type: Boolean,
+				default: false
+			},
+			data: {
+				type: {
+					ano: {
+						type: Number,
+						required: true
+					},
+					dia: {
+						type: Number,
+						required: true
+					},
+					mes: {
+						type: Number,
+						required: true
+					},
+				}
+			},
+			produtos: {
+				type: [{
+					produto_id: {
+						type: {
+							cache_id: {
+								type: Number,
+								default: 0
+							},
+							_id: {
+								type: String,
+								default: ''
+							}
+						}
+					},
+					quantidade: {
+						type: Number,
+						default: 1,
+					},
+					preco: {
+						type: String,
+						default: '0'
+					}
+				}],
+				default: []
+			} 
+		}],
+		default: []
+	}
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

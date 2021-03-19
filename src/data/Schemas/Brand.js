@@ -13,6 +13,10 @@ const Brand =  new Schema({
 		type: String,
 		required: true
 	},
+	nome_key: {
+		type: String,
+		required: true
+	},
 	descricao: {
 		type: String,
 		default: ''
