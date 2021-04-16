@@ -1,15 +1,17 @@
 const { Schema, model } = require('mongoose')
+	remove_accents = require('remove-accents'),
+	{ _default, identify } = require('./rest')
+
+const preco_type = {
+	preco: {
+		type: String,
+		default: '0'
+	},
+	supermercado_id: identify
+}
 
 const Product =  new Schema({
-	cache_id: {
-		type: Number,
-		default: 0
-	},
 	supermercado_cache_id: {
-		type: String,
-		default: ''
-	},
-	hash_identify_device: {
 		type: String,
 		default: ''
 	},
@@ -19,11 +21,9 @@ const Product =  new Schema({
 	},
 	nome_key: {
 		type: String,
-		required: true
-	},
-	favorito: {
-		type: Boolean,
-		default: false
+		default() {
+			return remove_accents(this.nome).toLowerCase()
+		}
 	},
 	fixado: {
 		type: Boolean,
@@ -34,8 +34,34 @@ const Product =  new Schema({
 		default: 0
 	},
 	tipo: {
-		type: String,
-		required: true
+		type: {
+			texto: {
+				type: String,
+				deafult: 'Utilitário'
+			},
+			texto_key: {
+				type: String,
+				default() {
+					return remove_accents(this.tipo.texto).toLowerCase()
+				}
+			}
+		}
+	},
+	sabor: {
+		definido: {
+			type: Boolean,
+			default: false
+		}, 
+		nome: {
+			type: String,
+			default: ''
+		},
+		nome_key: {
+			type: String,
+			default() {
+				return remove_accents(this.sabor.nome).toLowerCase()
+			}
+		}
 	},
 	peso: {
 		tipo: {
@@ -44,43 +70,52 @@ const Product =  new Schema({
 			default: 'unidade'
 		},
 		valor: {
-			type: Number,
+			type: String,
 			required: true,
-			default: 1
-		}
+			default: '1'
+		},
+		force_down: {
+      type: 'bool',
+      default: false
+    }
 	},
-
 	precos: {
 		type: [{
 			estado_id: Number,
-			sigla: String,
-			nome: String,
 			municipios: [{
-				nome: String,
 				municipio_id: Number,
-				menor_preco: {
-					preco: String,
-					supermercado_id: String
-				},
-				maior_preco: {
-					preco: String,
-					supermercado_id: String
+				menor_preco: preco_type,
+				maior_preco: preco_type,
+				historico: {
+					type: [{
+						...preco_type,
+						data: {
+							dia: {
+								type: Number,
+								required: true
+							},
+							mes: {
+								type: Number,
+								required: true
+							},
+							ano: {
+								type: Number,
+								required: true
+							}
+						}
+					}],
+					default: []
 				}
 			}]
 		}],
 		default: []
 	},
-	marca: {
-		marca_id: {
-			type: String,
-			required: true
-		},
-		nome: { 
-			type: String,
-			required: true
-		}
-	}
-	
+	marca_id: identify,
+	sem_marca: {
+		type: Boolean,
+		default: false
+	},
+	..._default
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

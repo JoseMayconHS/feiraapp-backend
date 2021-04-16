@@ -1,12 +1,15 @@
 const route = require('express').Router(),
   productControllers = require('../controllers/product'),
   admControllers = require('../controllers/adm'),
-  pushNotificationControllers = require('../controllers/pushNotification')
+  pushNotificationControllers = require('../controllers/pushNotification'),
+  watchControllers = require('../controllers/watch')
 
 route
   .delete('/auth/admin/product/:id', productControllers.remove)
   .delete('/auth/admin/manager/:id', admControllers.removeAnotherAdm)
   .delete('/auth/admin/notification/:id', pushNotificationControllers.remove)
+  //
+  .delete('/auth/app/observar/:id', watchControllers.remove)
   // .delete('/auth/admin/user/:id', admControllers.removeUser)
 
 module.exports = app => app.use(route)

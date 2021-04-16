@@ -9,13 +9,13 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome, local, cache
+      nome, local, cache, favorito
     } = req.body
 
     const { estado = {}, municipio = {} } = local
 
-    const { nome: estado_nome, sigla: estado_sigla } = estado
-    const { nome: municipio_nome } = municipio
+    const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
+    const { nome: municipio_nome, _id: municipio_id } = municipio
 
     const checkEmpty = {
       nome, municipio_nome, estado_nome, estado_sigla
@@ -35,8 +35,21 @@ exports.store = async (req, res) => {
 
     const data = {
       nome, local, cache_id, hash_identify_device,
-      local_estado_id: local.estado.id,
-      local_municipio_id: local.municipio.id,
+      local_estado_id: estado_id,
+      local_municipio_id: municipio_id,
+      local: {
+        estado: {
+          cache_id: estado_id,
+          nome: estado_nome,
+          sigla: estado_sigla
+        }, 
+        municipio: {
+          cache_id: municipio_id,
+          nome: municipio_nome,
+          estado_id
+        }
+      },
+      favorito
     }
 
     Supermarket.create(data)
@@ -70,15 +83,19 @@ exports.indexAll = (req, res) => {
     if (where) {
       Supermarket.find()
         .populate()
-        .where('local.estado.id').in([where.local_estado_id])
-        .where('local.municipio.id').in([where.local_municipio_id])
+        .where('status', true)
+        .where('favorito', !!where.favorito)
+        .where('local.estado.cache_id').in([where.local_estado_id])
+        .where('local.municipio.cache_id').in([where.local_municipio_id])
         .then(Documents => {
           const count = Documents.length
 
           Supermarket.find()
             .populate()
-            .where('local.estado.id').in([where.local_estado_id])
-            .where('local.municipio.id').in([where.local_municipio_id])
+            .where('status', true)
+            .where('favorito', !!where.favorito)
+            .where('local.estado.cache_id').in([where.local_estado_id])
+            .where('local.municipio.cache_id').in([where.local_municipio_id])
             .limit(limitQuery)
             .skip((limitQuery * page) - limitQuery)
             .sort('-created_at')
@@ -183,50 +200,75 @@ exports.update = (req, res) => {
 
     const { id: _id } = req.params
 
+    const { data = {}, campo } = req.body
+
     if (typeof _id !== 'string')
       throw new Error()
 
-    const { preco } = req.body
+    switch (campo) {
+      case 'produtos':    
+        const _d = new Date()
+    
+        const atualizado = {
+          dia: _d.getDate(), 
+          mes: _d.getMonth() + 1, 
+          ano: _d.getFullYear(), 
+          hora: `${ _d.getHours() }:${ _d.getMinutes() }`
+        }
+    
+        Supermarket
+          .findById(_id)
+          .select('produtos')
+          .then(supermarket => {
+    
+            let products = [ ...supermarket.produtos ]
+    
+            products = products.map(product => {
+              const { produto_id: { api_id } } = product
 
-    if (preco) {
-      const { supermercado_id, preco: preco_u, produto_id } = preco
-
-      Supermarket
-        .findById(supermercado_id)
-        .select('produtos')
-        .then(supermarket => {
-
-          let products = [ ...supermarket.produtos ]
-
-          const productIndex = products.findIndex(({ produto_id: produto_id_1 }) => produto_id_1 === produto_id)
-
-          if (productIndex !== -1) {
-            products[productIndex] = {
-              ...products[productIndex],
-              preco: preco_u
-            }
-          } else {
-            products = [ ...products, {
-              produto_id,
-              preco: preco_u
-            }]
-          }
-
-          Supermarket.findByIdAndUpdate(supermercado_id, {
-            produtos: products
+              const product_in_request = data.produtos.find(({ _id }) => _id === String(api_id))
+  
+              if (product_in_request) {
+                return {
+                  ...product,
+                  preco: product_in_request.preco,
+                  atualizado
+                }
+              } else {
+                return product
+              }
+            })
+    
+            data.produtos.forEach(({ produto_id, preco }) => {
+              const productIndex = products.findIndex(({ produto_id: { api_id } }) => String(api_id) === produto_id._id)
+    
+              if (productIndex === -1) {
+                products.push({
+                  produto_id,
+                  preco,
+                  atualizado
+                })
+              }
+            })
+        
+            Supermarket.findOneAndUpdate({ _id }, {
+              produtos: products
+            })
+            .then(() => {
+              res.status(200).json({ ok: true, message: 'Supermercado atualizado!' })
+            })
+            .catch((e) => {
+              console.error(e)
+              res.status(500).send()  
+            })
           })
-          .then(() => {
-            res.status(200).json({ ok: true, message: 'Supermercado atualizado!' })
+          .catch(e => {
+            console.error(e) 
+            res.status(500).send()
           })
-          .catch((e) => {
-            console.error(e)
-            res.status(500).send()  
-          })
-        })
-        .catch(e => {
-          console.error(e) 
-          res.status(500).send()
-        })
+        break
+      default :
+        res.status(400).send()
     }
   } catch(e) {
     res.status(500).send()

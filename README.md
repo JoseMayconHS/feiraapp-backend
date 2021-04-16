@@ -1,2 +1,2 @@
-# QAD API
+# FeiraApp API
 API do aplicativo `Maycon Silva - FeiraApp`

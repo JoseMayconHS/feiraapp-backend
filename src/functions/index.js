@@ -185,26 +185,25 @@ exports.authenticate_request = (req, res, next) => {
   try {
 
     const { 
-      iv: ivBody, 
-      content: contentBody 
-    } = req.body
+      iv, 
+      content 
+    } = req.headers
 
-    const { 
-      iv: ivQuery, 
-      content: contentQuery
-    } = req.query
+    // const { 
+    //   iv: ivQuery, 
+    //   content: contentQuery
+    // } = req.query
 
     // const crypted = this.encrypt('GodisFaithful')
 
     // const decrypted = this.decrypt(crypted)
 
-    const iv = ivBody || ivQuery
-    const content = contentBody || contentQuery
+    // const iv = ivBody || ivQuery
+    // const content = contentBody || contentQuery
 
     const decrypted = this.decrypt({ iv, content })
 
-    console.log({ decrypted, crypted, word: 'GodisFaithful' })
-    console.warn(process.env.AUTHENTICATION_WORD)
+    // console.log('next', decrypted === process.env.AUTHENTICATION_WORD)
 
     if (decrypted === process.env.AUTHENTICATION_WORD) {
       next()

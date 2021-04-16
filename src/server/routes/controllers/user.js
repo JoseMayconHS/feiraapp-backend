@@ -756,26 +756,168 @@ exports.shopping = async (req, res) => {
   try {
     const { 
       descricao, local, produtos, 
-      supermercado, favorito, data, 
+      supermercado_id, favorito, data, 
       hash_identify_device = ''
     } = req.body
 
     console.log('user.shopping ', req.body)
+    // {
+    //   _id: 1,
+    //   finalizado: false,
+    //   descricao: '',
+    //   supermercado_id: { cache_id: 3, _id: '6078740082845f0928edf233', status: true },
+    //   favorito: false,
+    //   valor: '25.5',
+    //   api: false,
+    //   api_id: '',
+    //   data: { dia: 15, mes: 4, ano: 2021, status: true },
+    //   status: true,
+    //   produtos: [
+    //     {
+    //       _id: 1,
+    //       nome: 'Sorvete',
+    //       meu: true,
+    //       tipo: [Object],
+    //       favorito: false,
+    //       presenca: 0,
+    //       sabor: [Object],
+    //       peso: [Object],
+    //       marca_id: [Object],
+    //       sem_marca: false,
+    //       api: true,
+    //       api_id: '607871d482845f0928edf22f',
+    //       nome_key: 'sorvete',
+    //       status: true,
+    //       marca_obj: [Object],
+    //       preco_u: '8.5',
+    //       quantidade: 3
+    //     }
+    //   ],
+    //   hash_identify_device: '0d364761ffce22681f453850062f984d4481edd75b48d045d2c7edf6238943b0'
+    // }
     
     let supermarket = {}
     
-    if (typeof supermercado.id === 'number') {
-      supermarket = await Supermarket.findOne({ cache_id: supermercado.id, hash_identify_device })
+    if (supermercado_id._id.length) {
+      supermarket = await Supermarket.findById(supermercado_id._id)
     }
 
     const compra = {
-      descricao, local, favorito, data, produtos: [], supermercado: {}
+      descricao, local, favorito, data, produtos: [], supermercado_id: {}
     }
 
     if (supermarket && supermarket._doc) {
-      compra.supermercado._id = supermarket._doc._id
+      compra.supermercado_id._id = supermarket._doc._id
     } else {
-      compra.supermercado.cache_id = supermercado.id
+      compra.supermercado_id.cache_id = supermercado_id.cache_id
+    }
+
+    const productsMiddleware = produtos.map(({ api_id, quantidade, preco_u }) => ({
+      async fn() {
+        try {
+          let product = await Product.findById(api_id)
+
+          if (product) {
+            const produto_rest = {}
+
+            if (typeof produto_id === 'number') {
+              produto_rest.cache_id = produto_id
+            }
+
+            compra.produtos.push({
+              produto_id: {
+                _id: product._doc._id, ...produto_rest
+              },
+              quantidade, preco: preco_u
+            })
+          } else {
+            compra.produtos.push({
+              produto_id: {
+                cache_id: produto_id
+              },
+              quantidade, preco: preco_u
+            })
+          }
+
+        } catch(e) {
+          console.error(e)
+        }
+      }
+    }))
+
+    await functions.middlewareAsync(...productsMiddleware) 
+
+    // const { compras: shoppings } = await User.findById(req._id).select('compras')
+
+    console.log('user.shopping - compra', compra)
+
+    // const { compras } = await User.findByIdAndUpdate(req._id, { compras: [compra, ...shoppings] }, { new: true }).select('compras')
+    
+    res.status(200).json({ ok: true, data: '_id provisorio' })
+
+  } catch(e) {
+    console.error(e)
+    res.status(500).send()
+  }
+}
+exports.shoppingFromCache = async (req, res) => {
+  try {
+    const { 
+      descricao, local, produtos, 
+      supermercado_id, favorito, data, 
+      hash_identify_device = ''
+    } = req.body
+
+    console.log('user.shopping ', req.body)
+    // {
+    //   _id: 1,
+    //   finalizado: false,
+    //   descricao: '',
+    //   supermercado_id: { cache_id: 3, _id: '6078740082845f0928edf233', status: true },
+    //   favorito: false,
+    //   valor: '25.5',
+    //   api: false,
+    //   api_id: '',
+    //   data: { dia: 15, mes: 4, ano: 2021, status: true },
+    //   status: true,
+    //   produtos: [
+    //     {
+    //       _id: 1,
+    //       nome: 'Sorvete',
+    //       meu: true,
+    //       tipo: [Object],
+    //       favorito: false,
+    //       presenca: 0,
+    //       sabor: [Object],
+    //       peso: [Object],
+    //       marca_id: [Object],
+    //       sem_marca: false,
+    //       api: true,
+    //       api_id: '607871d482845f0928edf22f',
+    //       nome_key: 'sorvete',
+    //       status: true,
+    //       marca_obj: [Object],
+    //       preco_u: '8.5',
+    //       quantidade: 3
+    //     }
+    //   ],
+    //   hash_identify_device: '0d364761ffce22681f453850062f984d4481edd75b48d045d2c7edf6238943b0'
+    // }
+    
+    let supermarket = {}
+    
+    if (supermercado_id._id.length) {
+      supermarket = await Supermarket.findById(supermercado_id._id)
+    }
+
+    const compra = {
+      descricao, local, favorito, data, produtos: [], supermercado_id: {}
+    }
+
+    if (supermarket && supermarket._doc) {
+      compra.supermercado_id._id = supermarket._doc._id
+    } else {
+      compra.supermercado_id.cache_id = supermercado_id.cache_id
     }
 
     const productsMiddleware = produtos.map(({ produto_id, quantidade, preco_u }) => ({

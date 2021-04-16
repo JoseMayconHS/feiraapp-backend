@@ -17,17 +17,13 @@ const html = `
 route
 	.get('/__origin__', (req, res) => res.send(html))
 	.get('/already', admControllers.qtd)
-	// // Usuários
-	// .get('/auth/admin/user/:page', userControllers.indexAll)
-	// .get('/auth/admin/user/single/:id', userControllers.single)
-	// .get('/auth/admin/user/search/:word/:page', userControllers.search)
 	// Produtos
 	.get('/auth/admin/product/:page', productControllers.indexAll)
 	.get('/auth/admin/all/product', productControllers.all)
 	.get('/auth/admin/product/single/:id', productControllers.single)
 	// Supermercados
-	.get('/auth/request/supermarket/:page', supermarketControllers.indexAll)
-	.get('/auth/admin/supermarket/:page', supermarketControllers.indexAll)
+	.get('/auth/app/supermercados/:page', supermarketControllers.indexAll)
+	.get('/auth/admin/supermercados/:page', supermarketControllers.indexAll)
 	// Notificações
 	.get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// Gestores
@@ -35,6 +31,6 @@ route
 	// .get('/auth/admin/qtd/expo', userControllers.qtd)
 	.get('/auth/admin/cards', admControllers.cards)
 	// Ambos
-	.get('/auth/request/brand/:page', brandControllers.indexAll)
+	.get('/auth/app/brand/:page', brandControllers.indexAll)
 
-	module.exports = app => app.use(route)
+module.exports = app => app.use(route)

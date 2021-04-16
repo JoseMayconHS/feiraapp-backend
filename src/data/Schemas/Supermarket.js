@@ -1,36 +1,26 @@
-const { Schema, model } = require('mongoose')
+const { Schema, model } = require('mongoose'),
+	remove_accents = require('remove-accents'),
+	{ locale, _default, identify } = require('./rest')
 
 const Supermarket =  new Schema({
-	cache_id: {
-		type: Number,
-		default: 0
-	},
-	hash_identify_device: {
-		type: String,
-		default: ''
-	},
 	nome: {
 		type: String,
 		required: true
 	},
-	local: {
-		estado: {
-			id: Number,
-			nome: String,
-			sigla: String,
-		},
-		municipio: {
-			id: Number,
-			nome: String,
+	nome_key: {
+		type: String,
+		required: true,
+		default() {
+			return remove_accents(this.nome).toLowerCase()
 		}
 	},
 	local_estado_id: {
 		type: Number,
-		required: true,
+		required: false,
 	},
 	local_municipio_id: {
 		type: Number,
-		required: true,
+		required: false,
 	},
 	classificacao: {
 		type: Number,
@@ -38,17 +28,22 @@ const Supermarket =  new Schema({
 	},
 	produtos: {
 		type: [{
-			produto_id: {
-				type: String,
-				required: true
-			},
+			produto_id: identify,
 			preco: {
 				type: String,
 				required: true
+			}, 
+			atualizado: {
+				dia: Number,
+				mes: Number,
+				ano: Number,
+				hora: String
 			}
 		}],
 		default: []
-	}
+	},
+	local: locale,
+	..._default,
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

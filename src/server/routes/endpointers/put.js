@@ -1,12 +1,11 @@
 const route = require('express').Router(),
 	productControllers = require('../controllers/product'),
+	supermarketControllers = require('../controllers/supermarket'),
 	admControllers = require('../controllers/adm')
 
 route
-	// .put('/app/user/forgot', userControllers.generate)
-	// App
-	// .put('/auth/user/user', userControllers.update)
-	// .put('/auth/user/app/logout', userControllers.logout)
+	.put('/auth/app/supermercado/:id', supermarketControllers.update)
+	.put('/auth/app/produto/varios', productControllers.updateMany)
 	// Dashboard
 	.put('/auth/admin/product/:id', productControllers.update)
 	.put('/auth/admin/user/status/:id', admControllers.toggleUserSignUp)
