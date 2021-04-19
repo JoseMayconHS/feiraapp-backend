@@ -8,7 +8,7 @@ exports.hasEmpty = values => {
   let has = false
 
   Object.values(values)
-    .forEach((value, index) => {
+    .forEach((value) => {
       has = !has && (typeof value === 'string' && !value.length)
     })
 

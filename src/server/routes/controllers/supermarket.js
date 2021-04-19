@@ -68,7 +68,7 @@ exports.store = async (req, res) => {
 }
 
 
-exports.indexAll = (req, res) => {
+exports.index = (req, res) => {
   // OK
 
   try {
@@ -85,8 +85,8 @@ exports.indexAll = (req, res) => {
         .populate()
         .where('status', true)
         .where('favorito', !!where.favorito)
-        .where('local.estado.cache_id').in([where.local_estado_id])
-        .where('local.municipio.cache_id').in([where.local_municipio_id])
+        .where('local.estado.cache_id', where.local_estado_id)
+        .where('local.municipio.cache_id', where.local_municipio_id)
         .then(Documents => {
           const count = Documents.length
 
@@ -94,16 +94,23 @@ exports.indexAll = (req, res) => {
             .populate()
             .where('status', true)
             .where('favorito', !!where.favorito)
-            .where('local.estado.cache_id').in([where.local_estado_id])
-            .where('local.municipio.cache_id').in([where.local_municipio_id])
+            .where('local.estado.cache_id', where.local_estado_id)
+            .where('local.municipio.cache_id', where.local_municipio_id)
             .limit(limitQuery)
             .skip((limitQuery * page) - limitQuery)
             .sort('-created_at')
             .then(Documents => {
-              res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
+
+              const data = Documents.map(doc => ({
+                ...doc._doc,
+                produtos: []
+              }))
+
+              res.status(200).json({ ok: true, data, count, limit: limitQuery })
             })
-            .catch(_ => {
-              res.status(500).send()
+            .catch(e => {
+              console.error(e)
+              res.status(400).send()
             })
         })
     } else {
@@ -155,35 +162,28 @@ exports.all = (_, res) => {
 exports.single = (req, res) => {
 
 	try {
-    const { id } = req.params
+    const { id: _id } = req.params
+
+    // NO MOMENTO SO PREVEJO (produtos)
+    const {
+      select = ''
+    } = req.query
     
-    Product.findById(id)
+    Supermarket.findById(_id)
+      .select(select)
       .then(single => {
-        res.status(200).json({ ok: true, data: single })
+        if (single) {
+          if (select !== '') {
+            res.status(200).json({ ok: true, data: single[select] })
+          } else {
+            res.status(200).json({ ok: true, data: single })
+          }
+        } else {
+          res.status(400).send()
+        }
       })
       .catch(e => {
-        res.status(500).send()
-      })
-			
-	} catch(error) {
-		res.status(500).send()
-	}
-
-}
-
-exports.indexBy = (req, res) => {
-  // NÃO UTILIZADO
-  // NÃO TESTATO
-
-	try {
-    let where = req.query || {}
-    
-    Product.find(where)
-      .sort('-created_at')
-      .then(Documents => {
-        res.status(200).json({ ok: true, data: where._id ? Documents[0] : Documents })
-      })
-      .catch(_ => {
+        console.error(e)
         res.status(500).send()
       })
 			
@@ -213,8 +213,16 @@ exports.update = (req, res) => {
           dia: _d.getDate(), 
           mes: _d.getMonth() + 1, 
           ano: _d.getFullYear(), 
-          hora: `${ _d.getHours() }:${ _d.getMinutes() }`
+          hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
         }
+
+        // if (atualizado.dia < 10) {
+        //   atualizado.dia = `0${ atualizado.dia }`
+        // }
+
+        // if (atualizado.mes < 10) {
+        //   atualizado.mes = `0${ atualizado.mes }`
+        // }
     
         Supermarket
           .findById(_id)

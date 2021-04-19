@@ -12,27 +12,28 @@ route
 	// App
 	// Supermercado
 	.post('/auth/app/supermercado', supermarketControllers.store)
-	.post('/auth/app/supermercados/:page', supermarketControllers.indexAll)
-	.post('/auth/app/cache/supermercado', supermarketControllers.store)
+	// Supermercado (Buscar por localizacao)
+	.post('/auth/app/supermercados/:page', supermarketControllers.index)
 	// Observar
 	.post('/auth/app/observar', watchControllers.create)
+	.post('/auth/app/observar/:id', watchControllers.index)
 	//
 	.post('/auth/app/feira/finalizar', userControllers.shopping)
 	.post('/auth/app/produto', productControllers.store)
 	.post('/auth/app/produtos/:page', productControllers.indexBy)
-	// Supermercado (Buscar por localizacao)
+	.post('/auth/app/produto/:id/:page', productControllers.single)
 	// Marcas (Buscar por nome)
-	.post('/auth/app/marcas/onde/:page', brandControllers.indexBy)
+	.post('/auth/app/marcas/:page', brandControllers.indexBy)
 	// Dashboard
 	.post('/dashboard/signin', admControllers.sign)
 	.post('/dashboard/signup', admControllers.store)
 	.post('/auth/admin/reconnect', admControllers.reconnect)
 	.post('/auth/admin/expo', pushNotificationControllers.send)
-	// Ambos
-	.post('/auth/app/marca', brandControllers.store)
-	// Do cache para a api, sem autênticação
+	.post('/auth/admin/marca', brandControllers.store)
+	// Do cache para a api
 	.post('/auth/app/cache/produto', productControllers.store)
 	.post('/auth/app/cache/marca', brandControllers.store)
+	.post('/auth/app/cache/supermercado', supermarketControllers.store)
 	.post('/auth/app/cache/cache-to-api/:hash', userControllers.cacheToAPI)
 
 module.exports = app => app.use(route)

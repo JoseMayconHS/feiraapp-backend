@@ -1,5 +1,4 @@
 const route = require('express').Router(),
-	userControllers = require('../controllers/user'),
 	productControllers = require('../controllers/product'),
 	supermarketControllers = require('../controllers/supermarket'),
 	brandControllers = require('../controllers/brand'),
@@ -18,12 +17,14 @@ route
 	.get('/__origin__', (req, res) => res.send(html))
 	.get('/already', admControllers.qtd)
 	// Produtos
-	.get('/auth/admin/product/:page', productControllers.indexAll)
-	.get('/auth/admin/all/product', productControllers.all)
-	.get('/auth/admin/product/single/:id', productControllers.single)
+	.get('/auth/admin/produto/:page', productControllers.index)
+	.get('/auth/admin/produto/todos', productControllers.all)
+	.get('/auth/app/produto/interna/:id', productControllers.single)
+	.get('/auth/admin/produto/interna/:id', productControllers.single)
 	// Supermercados
-	.get('/auth/app/supermercados/:page', supermarketControllers.indexAll)
-	.get('/auth/admin/supermercados/:page', supermarketControllers.indexAll)
+	.get('/auth/app/supermercado/:id', supermarketControllers.single)
+	.get('/auth/app/supermercados/:page', supermarketControllers.index)
+	.get('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Notificações
 	.get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// Gestores
@@ -31,6 +32,6 @@ route
 	// .get('/auth/admin/qtd/expo', userControllers.qtd)
 	.get('/auth/admin/cards', admControllers.cards)
 	// Ambos
-	.get('/auth/app/brand/:page', brandControllers.indexAll)
+	.get('/auth/app/brand/:page', brandControllers.index)
 
 module.exports = app => app.use(route)

@@ -1,6 +1,4 @@
-
-const { Types } = require('mongoose'),
-  remove_accents = require('remove-accents'),
+const remove_accents = require('remove-accents'),
   Product = require('../../../data/Schemas/Product'),
   Watch = require('../../../data/Schemas/Watch'),
   Brand = require('../../../data/Schemas/Brand'),
@@ -405,7 +403,7 @@ exports.saveFromCache = async (req, res) => {
 }
 
 
-exports.indexAll = (req, res) => {
+exports.index = (req, res) => {
   // OK
 
   try {
@@ -416,12 +414,20 @@ exports.indexAll = (req, res) => {
       } else {
         const { page = 1 } = req.params
 
+        let {
+          limit: limitQuery
+        } = req.query
+
+        if (!limitQuery) {
+          limitQuery = limit
+        }
+
         Product.find()
-          .limit(limit)
-          .skip((limit * page) - limit)
+          .limit(limitQuery)
+          .skip((limitQuery * page) - limitQuery)
           .sort('-created_at')
           .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, count, limit })
+            res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
           })
           .catch(_ => {
             res.status(500).send()
@@ -455,22 +461,128 @@ exports.all = (_, res) => {
 }
 
 exports.single = (req, res) => {
-
 	try {
-    const { id } = req.params
+    let { id: _id, page = 1 } = req.params
+    page = +page
+    let {
+      select = '',
+      target, 
+      limit: limitQuery
+    } = req.query
+    const {
+      local
+    } = req.body
+
+    if (!limitQuery) {
+      limitQuery = limit
+    }
+
+    console.log('product.single query', req.query)
+    console.log('product.single params', req.params)
+    console.log('product.single body', req.body)
     
-    Product.findById(id)
-      .then(single => {
-        res.status(200).json({ ok: true, data: single })
+    Product.findById(_id)
+      .select(select)
+      .then(async single => {
+
+        if (single) {
+          switch (target) {
+            case 'app-single-product':
+              const prices = single._doc
+                .precos
+
+              const { estado = {}, municipio = {} } = local
+
+              const { _id: uf } = estado
+              const { _id: mn } = municipio
+
+              if (!uf || !mn) {
+                return res.status(400).send()
+              }
+            
+              let historic = []
+  
+              const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
+          
+              if (state_index !== -1) {
+                const state = prices[state_index]
+          
+                const region_index = state.municipios.findIndex(({ municipio_id }) => municipio_id === mn)
+          
+                if (region_index !== -1) {
+                  const region = state.municipios[region_index]
+
+                  const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
+          
+                  const supermarketsMiddleware = historic_paginaed.map(preco => ({
+                    async fn() {
+                      const supermarket = await Supermarket.findById(preco.supermercado_id._id)
+                    
+                      historic.push({
+                        ...preco._doc,
+                        supermercado_obj: {
+                          ...supermarket._doc,
+                          produtos: [],
+                          _id: 0,
+                          api: true,
+                          api_id: supermarket._doc._id
+                        },
+                        // preco: preco.preco,
+                        // supermercado_id: preco.supermercado_id,
+                        // data: preco.data
+                      })
+                    }
+                  }))
+        
+                  supermarketsMiddleware.length && await functions.middlewareAsync(...supermarketsMiddleware)
+                }
+              }
+              res.status(200).json({ 
+                ok: true, data: historic,
+                limit: limitQuery, count: historic.length
+              })
+              break
+            case 'app-single-product-watch': 
+              const getLocale = (precos = []) => {
+                const state = precos.find(({ estado_id }) => estado_id === local.estado._id)
+            
+                if (state) {
+                  const region = state.municipios.find(({ municipio_id }) => municipio_id === local.municipio._id)
+            
+                  if (region) {
+          
+                    return {
+                      menor_preco: region.menor_preco,
+                      maior_preco: region.maior_preco
+                    }
+                  }
+                }
+              }
+
+              const data = getLocale(single.precos)
+
+              console.log('response', data)
+
+              res.status(200).json({ ok: !!data, data })
+
+              break
+            default:
+              res.status(200).json({ ok: true, data: single })
+          }
+  
+        } else {
+          res.status(400).send()
+        }
+
       })
       .catch(e => {
         res.status(500).send()
       })
 			
 	} catch(error) {
+    console.error(error)
 		res.status(500).send()
 	}
-
 }
 
 exports.indexBy = async (req, res) => {
@@ -503,11 +615,12 @@ exports.indexBy = async (req, res) => {
 
     const where = {
       favorito: body.where.favorito,
-      ids: []
+      ids: [],
+      not_ids: body.ids || []
     }
-    const { local } = body
+    const { local, where: { ids: products_by_shopping }} = body
 
-    if (body.where.nome.length) {
+    if (body.where.nome && body.where.nome.length) {
 
       const regex = new RegExp(remove_accents(body.where.nome) .toLocaleLowerCase())
 
@@ -547,7 +660,7 @@ exports.indexBy = async (req, res) => {
         .select('produtos')
 
       if (products_by_supermarket) {
-        const newIds = products_by_supermarket.filter(({
+        const newIds = products_by_supermarket.produtos.filter(({
           produto_id
         }) => {
           const index = where.ids
@@ -560,8 +673,9 @@ exports.indexBy = async (req, res) => {
       }
     }
 
-    if (body.ids.length) {
+    if (body.ids && body.ids.length) {
       // DEIXANDO SOMENTE ids QUE NAO ESTAO DENTRO DO ARRAY DE body.ids
+      console.log('removendo', { selects: where.ids, req: body.ids })
       where.ids = where.ids.filter(_id => {
         const index = body.ids.findIndex(not_id => String(not_id) === String(_id))
 
@@ -591,7 +705,7 @@ exports.indexBy = async (req, res) => {
       }
     }
 
-    if (body.where.tipos.length) {
+    if (body.where.tipos && body.where.tipos.length) {
       const product_by_types = await Product
         .find()
         .where('tipo.texto_key').in(body.where.tipos)
@@ -612,17 +726,15 @@ exports.indexBy = async (req, res) => {
     }
 
     const then = async Documents => {
-      console.log('ids', where.ids)
-
-      let data = [...Documents]
+      let data = [ ...Documents ]
 
       data = data.map(item => ({
         ...item._doc,
-        precos: undefined,
-        api_id: item._doc._id,
-        api: true,
-        _id: 0,
-        blocked: true
+        // precos: undefined,
+        // api_id: item._doc._id,
+        // api: true,
+        // _id: 0,
+        // blocked: true
       }))
 
 
@@ -632,19 +744,19 @@ exports.indexBy = async (req, res) => {
           if (!sem_marca) {
             let brand = await Brand.findById(marca_id._id)
 
-            brand = {
-              ...brand._doc,
-              api_id: brand._doc._id,
-              api: true,
-              _id: 0
-            }
+            // brand = {
+            //   ...brand._doc,
+            //   api_id: brand._doc._id,
+            //   api: true,
+            //   _id: 0
+            // }
 
             data[index].marca_obj = brand
           }
         }
       }))
 
-      const watchObjMiddleware = data.map(({ api_id: _id }, index) => ({
+      const watchObjMiddleware = data.map(({ _id }, index) => ({
         async fn() {
 
           let watch = await Watch.findOne()
@@ -654,22 +766,22 @@ exports.indexBy = async (req, res) => {
             .where('local.municipio.cache_id', local.municipio.cache_id)
 
           if (watch) {
-            watch = {
-              ...watch._doc,
-              local: {
-                estado: {
-                  ...watch._doc.local.estado,
-                  _id: watch._doc.local.estado.cache_id,
-                },
-                municipio: {
-                  ...watch._doc.local.municipio,
-                  _id: watch._doc.local.municipio.cache_id,
-                }
-              },
-              api_id: watch._doc._id,
-              api: true,
-              _id: 0
-            }
+            // watch = {
+            //   ...watch._doc,
+            //   local: {
+            //     estado: {
+            //       ...watch._doc.local.estado,
+            //       _id: watch._doc.local.estado.cache_id,
+            //     },
+            //     municipio: {
+            //       ...watch._doc.local.municipio,
+            //       _id: watch._doc.local.municipio.cache_id,
+            //     }
+            //   },
+            //   api_id: watch._doc._id,
+            //   api: true,
+            //   _id: 0
+            // }
         
             data[index].notificacao = watch
           }
@@ -680,8 +792,7 @@ exports.indexBy = async (req, res) => {
 
       await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
 
-      res.status(200).json({ ok: true, data, debug: data })
-      // res.status(200).json({ ok: true, data: where._id ? Documents[0] : Documents })
+      res.status(200).json({ ok: true, data })
     }
 
     const _catch = e => {
@@ -689,32 +800,50 @@ exports.indexBy = async (req, res) => {
       res.status(500).send()
     }
 
-    if (!body.where.tipos.length && !where.ids.length && !body.where.observados) {
+    if (
+      !products_by_shopping 
+      && (body.where.tipos && !body.where.tipos.length) 
+      && !where.ids.length && !body.where.observados
+      ) {
       Product.find()
         .populate()
         .where('status', true)
         .where('favorito', !!where.favorito)
+        .where('_id').nin(where.not_ids)
         .limit(limitQuery)
         .skip((limitQuery * page) - limitQuery)
         .sort('-created_at')
         .then(then)
         .catch(_catch)
     } else {
-      Product.find()
-        .populate()
-        .where('status', true)
-        .where('favorito', !!where.favorito)
-        .where('_id').in(where.ids)
-        .limit(limitQuery)
-        .skip((limitQuery * page) - limitQuery)
-        .sort('-created_at')
-        .then(then)
-        .catch(_catch)
+      if (products_by_shopping) {
+        Product.find()
+          .populate()
+          .where('status', true)
+          .where('_id').in(products_by_shopping)
+          .where('_id').nin(where.not_ids)
+          .sort('-created_at')
+          .then(then)
+          .catch(_catch)
+      } else {
+        Product.find()
+          .populate()
+          .where('status', true)
+          .where('favorito', !!where.favorito)
+          .where('_id').in(where.ids)
+          .where('_id').nin(where.not_ids)
+          .limit(limitQuery)
+          .skip((limitQuery * page) - limitQuery)
+          .sort('-created_at')
+          .then(then)
+          .catch(_catch)
+      }
     }
 
 
 
 	} catch(error) {
+    console.error(error)
 		res.status(500).send()
 	}
 

@@ -26,6 +26,10 @@ const Supermarket =  new Schema({
 		type: Number,
 		default: 0
 	},
+	tot_produtos: {
+		type: Number,
+		deafult: 0
+	},
 	produtos: {
 		type: [{
 			produto_id: identify,
@@ -46,6 +50,15 @@ const Supermarket =  new Schema({
 	..._default,
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
+})
+
+Supermarket.pre('findOneAndUpdate', function (next) {
+
+	if (this._update.produtos) {
+		this._update.tot_produtos = this._update.produtos.length
+	}
+	
+	next()
 })
 
 module.exports = model('supermercado', Supermarket)
