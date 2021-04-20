@@ -276,7 +276,9 @@ exports.update = (req, res) => {
           })
         break
       default :
-        res.status(400).send()
+          Supermarket.findOneAndUpdate({ _id }, req.body)
+            .then(() => res.status(200).send())
+            .catch(() => res.status(400).send())
     }
   } catch(e) {
     res.status(500).send()

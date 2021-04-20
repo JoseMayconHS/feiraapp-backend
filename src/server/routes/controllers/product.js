@@ -16,7 +16,6 @@ function updatePrices({
       .then(product => {
         const { estado, municipio } = local
 
-        // (XD) ERRO
         const prices = [ ...product.precos ]
         
         let newPrices = []
@@ -614,11 +613,16 @@ exports.indexBy = async (req, res) => {
     console.log('product.indexBy', { body: req.body, page })
 
     const where = {
-      favorito: body.where.favorito,
-      ids: [],
+      request_ids: body.where.ids || [],
+      observer_ids: [],
+      types_ids: [],
+      names_ids: [],
+      supermarket_ids: [],
+      brand_ids: [],
+      favorites_ids: body.where.favoritos || [],
       not_ids: body.ids || []
     }
-    const { local, where: { ids: products_by_shopping }} = body
+    const { local } = body
 
     if (body.where.nome && body.where.nome.length) {
 
@@ -630,7 +634,7 @@ exports.indexBy = async (req, res) => {
 
         if (products_by_name) {
           products_by_name.forEach(({ _id }) => {
-            where.ids.push(_id)
+            where.names_ids.push(String(_id))
           })
         }
     }
@@ -644,11 +648,9 @@ exports.indexBy = async (req, res) => {
         .where('local.estado.cache_id', local.estado.cache_id)
         .where('local.municipio.cache_id', local.municipio.cache_id)
       
-      console.log({ observer_products })
-
       if (observer_products) {
         observer_products.forEach(({ produto_id }) => {
-          where.ids.push(produto_id._id)
+          where.observer_ids.push(produto_id._id)
         })
       }
     }
@@ -660,27 +662,19 @@ exports.indexBy = async (req, res) => {
         .select('produtos')
 
       if (products_by_supermarket) {
-        const newIds = products_by_supermarket.produtos.filter(({
-          produto_id
-        }) => {
-          const index = where.ids
-            .findIndex(_id => String(_id) === String(produto_id._id))
+        // const newIds = products_by_supermarket.produtos.filter(({
+        //   produto_id
+        // }) => {
+        //   const index = where.ids
+        //     .findIndex(_id => String(_id) === String(produto_id._id))
 
-          return index === -1
-        }).map(({ produto_id }) => produto_id._id)
+        //   return index === -1
+        // }).map(({ produto_id }) => produto_id._id)
+        const newIds = products_by_supermarket.produtos
+          .map(({ produto_id }) => produto_id._id)
 
-        where.ids = [ ...where.ids, ...newIds ]
+        where.supermarket_ids = newIds
       }
-    }
-
-    if (body.ids && body.ids.length) {
-      // DEIXANDO SOMENTE ids QUE NAO ESTAO DENTRO DO ARRAY DE body.ids
-      console.log('removendo', { selects: where.ids, req: body.ids })
-      where.ids = where.ids.filter(_id => {
-        const index = body.ids.findIndex(not_id => String(not_id) === String(_id))
-
-        return index === -1
-      })
     }
 
     if (typeof body.marca_id === 'string' && body.marca_id.length) {
@@ -692,18 +686,34 @@ exports.indexBy = async (req, res) => {
         .select('_id')
 
       if (products_by_brand) {
-        const newIds = products_by_brand.filter(({
-          _id
-        }) => {
-          const index = where.ids
-            .findIndex(where_id => String(where_id) === String(_id))
+        // const newIds = products_by_brand.filter(({
+        //   _id
+        // }) => {
+        //   const index = where.ids
+        //     .findIndex(where_id => String(where_id) === String(_id))
 
-          return index === -1
-        }).map(({ _id }) => _id)
+        //   return index === -1
+        // }).map(({ _id }) => _id)
+        const newIds = products_by_brand.map(({ _id }) => String(_id))
 
-        where.ids = [ ...where.ids, ...newIds ]
+        where.brand_ids = newIds
       }
     }
+
+    // if (body.ids) {
+    //   if (body.ids.length) {
+    //     // DEIXANDO SOMENTE ids QUE NAO ESTAO DENTRO DO ARRAY DE body.ids
+    //     console.log('removendo', { selects: where.all_ids, req: body.ids })
+    //     where.all_ids = where.all_ids.filter(_id => {
+    //       const index = body.ids.findIndex(not_id => String(not_id) === String(_id))
+  
+    //       return index === -1
+    //     })
+    //   } else {
+    //     // where.ids = []
+    //   }
+    // }
+
 
     if (body.where.tipos && body.where.tipos.length) {
       const product_by_types = await Product
@@ -712,16 +722,31 @@ exports.indexBy = async (req, res) => {
         .select('_id')
 
       if (product_by_types) {
-        const newIds = product_by_types.filter(({
-          _id
-        }) => {
-          const index = where.ids
-            .findIndex(where_id => String(where_id) === String(_id))
+        // const newIds = product_by_types.filter(({
+        //   _id
+        // }) => {
+        //   const index = where.ids
+        //     .findIndex(where_id => String(where_id) === String(_id))
 
-          return index === -1
-        }).map(({ _id }) => _id)
+        //   let index2 = -1
+        //   if (ids_from_request) {
+        //     index2 = ids_from_request
+        //       .findIndex(where_id => String(where_id) === String(_id))
+        //   }
 
-        where.ids = [ ...where.ids, ...newIds ]
+        //   return index === -1 || index2 !== -1
+        // })
+        // .map(({ _id }) => _id)
+        const newIds = product_by_types
+          .map(({ _id }) => String(_id))
+
+        where.types_ids = newIds
+
+        // if (ids_from_request) {
+        //   where.ids = newIds
+        // } else {
+        //   where.ids = [ ...where.ids, ...newIds ]
+        // }
       }
     }
 
@@ -729,27 +754,14 @@ exports.indexBy = async (req, res) => {
       let data = [ ...Documents ]
 
       data = data.map(item => ({
-        ...item._doc,
-        // precos: undefined,
-        // api_id: item._doc._id,
-        // api: true,
-        // _id: 0,
-        // blocked: true
+        ...item._doc
       }))
-
 
       const brandObjMiddleware = data.map(({ sem_marca, marca_id }, index) => ({
         async fn() {
 
           if (!sem_marca) {
             let brand = await Brand.findById(marca_id._id)
-
-            // brand = {
-            //   ...brand._doc,
-            //   api_id: brand._doc._id,
-            //   api: true,
-            //   _id: 0
-            // }
 
             data[index].marca_obj = brand
           }
@@ -765,27 +777,9 @@ exports.indexBy = async (req, res) => {
             .where('local.estado.cache_id', local.estado.cache_id)
             .where('local.municipio.cache_id', local.municipio.cache_id)
 
-          if (watch) {
-            // watch = {
-            //   ...watch._doc,
-            //   local: {
-            //     estado: {
-            //       ...watch._doc.local.estado,
-            //       _id: watch._doc.local.estado.cache_id,
-            //     },
-            //     municipio: {
-            //       ...watch._doc.local.municipio,
-            //       _id: watch._doc.local.municipio.cache_id,
-            //     }
-            //   },
-            //   api_id: watch._doc._id,
-            //   api: true,
-            //   _id: 0
-            // }
-        
+          if (watch) {       
             data[index].notificacao = watch
           }
-
 
         }
       }))
@@ -799,48 +793,78 @@ exports.indexBy = async (req, res) => {
       console.error(e)
       res.status(500).send()
     }
+    
+    let ids = [...new Set([
+      ...where.names_ids,
+      ...where.types_ids,
+      ...where.supermarket_ids,
+      ...where.observer_ids,
+      ...where.brand_ids,
+      ...where.favorites_ids,
+      ...where.request_ids
+    ])]
 
-    if (
-      !products_by_shopping 
-      && (body.where.tipos && !body.where.tipos.length) 
-      && !where.ids.length && !body.where.observados
-      ) {
+    console.log({ where, ids })
+
+    if (body.where.favoritos) {
+      ids = ids.filter(_id => where.favorites_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    if (body.where.observados) {
+      ids = ids.filter(_id => where.observer_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    if (body.where.tipos.length) {
+      ids = ids.filter(_id => where.types_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    if (body.where.nome.length) {
+      ids = ids.filter(_id => where.names_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    console.log({ ids })
+
+    const clean_search = () => {
       Product.find()
         .populate()
         .where('status', true)
-        .where('favorito', !!where.favorito)
         .where('_id').nin(where.not_ids)
         .limit(limitQuery)
         .skip((limitQuery * page) - limitQuery)
         .sort('-created_at')
         .then(then)
         .catch(_catch)
-    } else {
-      if (products_by_shopping) {
-        Product.find()
-          .populate()
-          .where('status', true)
-          .where('_id').in(products_by_shopping)
-          .where('_id').nin(where.not_ids)
-          .sort('-created_at')
-          .then(then)
-          .catch(_catch)
-      } else {
-        Product.find()
-          .populate()
-          .where('status', true)
-          .where('favorito', !!where.favorito)
-          .where('_id').in(where.ids)
-          .where('_id').nin(where.not_ids)
-          .limit(limitQuery)
-          .skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(then)
-          .catch(_catch)
-      }
     }
 
+    const filter_search = () => {
+      Product.find()
+        .populate()
+        .where('status', true)
+        .where('_id').in(ids)
+        .where('_id').nin(where.not_ids)
+        .limit(limitQuery)
+        .skip((limitQuery * page) - limitQuery)
+        .sort('-created_at')
+        .then(then)
+        .catch(_catch)
+    }
 
+    
+    if (ids.length) {
+      filter_search()
+    } else {
+      if (
+        body.where.favoritos ||
+        body.where.observados ||
+        body.where.nome.length ||
+        body.where.tipos.length ||
+        body.where.ids
+      ) {
+        filter_search()
+      } else {
+        clean_search()
+      }
+    }
 
 	} catch(error) {
     console.error(error)
@@ -931,6 +955,12 @@ exports.update = (req, res) => {
           console.error(e) 
           res.status(500).send()
         })
+    } else {
+      Product.findOneAndUpdate({
+        _id
+      }, req.body)
+      .then(() => res.status(200).send())
+      .catch(() => res.status(400).send())
     }
   } catch(e) {
     res.status(500).send()
