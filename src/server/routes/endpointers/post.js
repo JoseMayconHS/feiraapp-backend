@@ -17,6 +17,8 @@ route
 	// Observar
 	.post('/auth/app/observar', watchControllers.create)
 	.post('/auth/app/observar/:id', watchControllers.index)
+	// Marca
+	.post('/auth/app/marca', brandControllers.store)
 	//
 	.post('/auth/app/feira/finalizar', userControllers.shopping)
 	.post('/auth/app/produto', productControllers.store)

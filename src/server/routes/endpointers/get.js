@@ -24,6 +24,7 @@ route
 	// Supermercados
 	.get('/auth/app/supermercado/:id', supermarketControllers.single)
 	.get('/auth/app/supermercados/:page', supermarketControllers.index)
+	.get('/auth/app/marcas/:page', brandControllers.index)
 	.get('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Notificações
 	.get('/auth/admin/notifications', pushNotificationControllers.recents)

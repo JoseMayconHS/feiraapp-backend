@@ -174,7 +174,6 @@ exports.store = async (req, res) => {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    
     let criar = !sem_marca
     
     let data_marca = false
@@ -185,7 +184,7 @@ exports.store = async (req, res) => {
         _id: marca_id
       } = marca
 
-      if (marca_id.length) {
+      if (marca_id && marca_id.length) {
   
         brand = await Brand.findById(marca_id)
     
@@ -214,7 +213,7 @@ exports.store = async (req, res) => {
     if (!sem_marca) {
       data.marca_id = {
         _id: data_marca._doc._id,
-        cache_id: marca.cache_id
+        cache_id: 0 // (END) cache_id sempre 0
       }
     }
 
@@ -626,7 +625,7 @@ exports.indexBy = async (req, res) => {
 
     if (body.where.nome && body.where.nome.length) {
 
-      const regex = new RegExp(remove_accents(body.where.nome) .toLocaleLowerCase())
+      const regex = new RegExp(remove_accents(body.where.nome).toLocaleLowerCase())
 
       const products_by_name = await Product
         .find({ nome_key: { $regex: regex, $options: 'g' } })
@@ -786,7 +785,7 @@ exports.indexBy = async (req, res) => {
 
       await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
 
-      res.status(200).json({ ok: true, data })
+      res.status(200).json({ ok: true, data, limit: limitQuery })
     }
 
     const _catch = e => {
@@ -814,12 +813,20 @@ exports.indexBy = async (req, res) => {
       ids = ids.filter(_id => where.observer_ids.some(w_id => String(w_id) === String(_id)))
     }
 
-    if (body.where.tipos.length) {
+    if (body.where.tipos && body.where.tipos.length) {
       ids = ids.filter(_id => where.types_ids.some(w_id => String(w_id) === String(_id)))
     }
 
-    if (body.where.nome.length) {
+    if (body.where.nome && body.where.nome.length) {
       ids = ids.filter(_id => where.names_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    if (typeof body.marca_id === 'string' && body.marca_id.length) {
+      ids = ids.filter(_id => where.brand_ids.some(w_id => String(w_id) === String(_id)))
+    }
+
+    if (typeof body.supermercado_id === 'string' && body.supermercado_id.length) {
+      ids = ids.filter(_id => where.supermarket_ids.some(w_id => String(w_id) === String(_id)))
     }
 
     console.log({ ids })
@@ -858,6 +865,8 @@ exports.indexBy = async (req, res) => {
         body.where.observados ||
         body.where.nome.length ||
         body.where.tipos.length ||
+        body.where.marca_id ||
+        body.where.supermercado_id ||
         body.where.ids
       ) {
         filter_search()

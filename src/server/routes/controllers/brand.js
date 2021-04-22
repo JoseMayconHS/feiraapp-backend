@@ -8,6 +8,41 @@ exports.store = async (req, res) => {
   try {
 
     const { 
+      nome,  descricao
+    } = req.body
+
+    const checkEmpty = {
+      nome
+    }
+
+    if (functions.hasEmpty(checkEmpty)) {
+      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+    }
+
+    console.log('brand.store ', req.body)
+
+    Brand.create({ 
+        nome, descricao
+      })
+      .then(brand => {
+        res.status(201).json({ ok: true, data: brand._doc })
+      })
+      .catch(e => {
+        console.error(e)
+        res.status(400).send()
+      })
+
+  } catch(err) {
+    console.log(err)
+    res.status(500).send()
+  }
+}
+
+exports.storeFromCache = async (req, res) => {
+  // Ok
+  try {
+
+    const { 
       nome,  descricao, cache
     } = req.body
 
@@ -52,22 +87,22 @@ exports.index = (req, res) => {
   // OK
 
   try {
+    let {
+      limit: limitQuery,
+      nome = ''
+    } = req.query
 
-    Brand.countDocuments((err, count) => {
+    const countCallback = async (err, count, filter = {}) => {
       if (err) {
         res.status(500).send()
       } else {
         const { page = 1 } = req.params
 
-        let {
-          limit: limitQuery
-        } = req.query
-
         if (!limitQuery) {
           limitQuery = limit
         }
 
-        Brand.find()
+        Brand.find(filter)
           .limit(limitQuery)
           .skip((limitQuery * page) - limitQuery)
           .sort('-created_at')
@@ -79,7 +114,19 @@ exports.index = (req, res) => {
           })
 
       }
-    })
+    }
+
+    if (nome.length) {
+      const regex = new RegExp(remove_accents(body.where.nome).toLocaleLowerCase())
+
+      Brand.countDocuments({
+        nome_key: { $regex: regex, $options: 'g' }
+      }, (err, count) => countCallback(err, count, {
+        nome_key: { $regex: regex, $options: 'g' }
+      }))
+    } else {
+      Brand.countDocuments(countCallback)
+    }
 
   } catch(err) {
     console.error(err)

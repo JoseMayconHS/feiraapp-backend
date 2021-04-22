@@ -80,11 +80,15 @@ exports.index = (req, res) => {
     if (!limitQuery) {
       limitQuery = limit
     }
+
+    console.log({ where })
+
     if (where) {
+
       Supermarket.find()
         .populate()
         .where('status', true)
-        .where('favorito', !!where.favorito)
+        .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
         .where('local.estado.cache_id', where.local_estado_id)
         .where('local.municipio.cache_id', where.local_municipio_id)
         .then(Documents => {
@@ -93,7 +97,7 @@ exports.index = (req, res) => {
           Supermarket.find()
             .populate()
             .where('status', true)
-            .where('favorito', !!where.favorito)
+            .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
             .where('local.estado.cache_id', where.local_estado_id)
             .where('local.municipio.cache_id', where.local_municipio_id)
             .limit(limitQuery)
@@ -112,6 +116,9 @@ exports.index = (req, res) => {
               console.error(e)
               res.status(400).send()
             })
+        }).catch(e => {
+          console.error(e)
+          res.status(400).send()
         })
     } else {
       Supermarket.countDocuments((err, count) => {
