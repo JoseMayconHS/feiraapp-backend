@@ -61,6 +61,16 @@ exports.middlewareAsync = (...steps) => {
   })
 }
 
+exports.setUndefineds = ({
+  data, undefineds
+}) => {
+  undefineds.forEach(key => {
+    data[key] = undefined
+  })
+
+  return data
+}
+
 exports.token = _id => {
   return new Promise((resolve, reject) => {
     try {

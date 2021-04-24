@@ -12,20 +12,28 @@ route
 	// App
 	// Supermercado
 	.post('/auth/app/supermercado', supermarketControllers.store)
+	// Buscar sem produtos
+	.post('/auth/app/supermercado/:id', supermarketControllers.single)
+	.post('/auth/admin/supermercado', supermarketControllers.store)
 	// Supermercado (Buscar por localizacao)
 	.post('/auth/app/supermercados/:page', supermarketControllers.index)
+	.post('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Observar
 	.post('/auth/app/observar', watchControllers.create)
 	.post('/auth/app/observar/:id', watchControllers.index)
 	// Marca
 	.post('/auth/app/marca', brandControllers.store)
-	//
-	.post('/auth/app/feira/finalizar', userControllers.shopping)
-	.post('/auth/app/produto', productControllers.store)
-	.post('/auth/app/produtos/:page', productControllers.indexBy)
-	.post('/auth/app/produto/:id/:page', productControllers.single)
+	.post('/auth/admin/marca', brandControllers.store)
 	// Marcas (Buscar por nome)
 	.post('/auth/app/marcas/:page', brandControllers.indexBy)
+	// Produto
+	.post('/auth/app/feira/finalizar', userControllers.shopping)
+	.post('/auth/app/produto', productControllers.store)
+	.post('/auth/admin/produto', productControllers.store)
+	.post('/auth/app/produtos/:page', productControllers.indexBy)
+	.post('/auth/admin/produtos/:page', productControllers.indexBy)
+	.post('/auth/app/produto/:id/:page', productControllers.single)
+	.post('/auth/admin/produto/:id', productControllers.single)
 	// Dashboard
 	.post('/dashboard/signin', admControllers.sign)
 	.post('/dashboard/signup', admControllers.store)

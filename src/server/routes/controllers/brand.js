@@ -160,7 +160,11 @@ exports.single = (req, res) => {
     
     Brand.findById(_id)
       .then(single => {
-        res.status(200).json({ ok: true, data: single })
+        if (single) {
+          res.status(200).json({ ok: true, data: single })
+        } else {
+          res.status(400).send()
+        }
       })
       .catch(_ => {
         res.status(500).send()

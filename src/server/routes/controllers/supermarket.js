@@ -73,7 +73,7 @@ exports.index = (req, res) => {
 
   try {
 
-    const { where } = req.body
+    const { where, undefineds = [] } = req.body
     const { page = 1 } = req.params
     let { limit: limitQuery } = req.query
 
@@ -105,10 +105,14 @@ exports.index = (req, res) => {
             .sort('-created_at')
             .then(Documents => {
 
-              const data = Documents.map(doc => ({
+              let data = Documents.map(doc => ({
                 ...doc._doc,
                 produtos: []
               }))
+
+              data = functions.setUndefineds({
+                data, undefineds
+              })
 
               res.status(200).json({ ok: true, data, count, limit: limitQuery })
             })
@@ -130,6 +134,14 @@ exports.index = (req, res) => {
             .skip((limitQuery * page) - limitQuery)
             .sort('-created_at')
             .then(Documents => {
+
+              Documents = Documents.map(data => ({
+                ...functions.setUndefineds({
+                  data, undefineds
+                }),
+                produtos: []
+              }))
+
               res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
             })
             .catch(_ => {
@@ -175,11 +187,20 @@ exports.single = (req, res) => {
     const {
       select = ''
     } = req.query
+
+    const {
+      undefineds = []
+    } = req.body
     
     Supermarket.findById(_id)
       .select(select)
       .then(single => {
         if (single) {
+
+          single = functions.setUndefineds({
+            data: single, undefineds
+          })
+
           if (select !== '') {
             res.status(200).json({ ok: true, data: single[select] })
           } else {
@@ -222,14 +243,6 @@ exports.update = (req, res) => {
           ano: _d.getFullYear(), 
           hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
         }
-
-        // if (atualizado.dia < 10) {
-        //   atualizado.dia = `0${ atualizado.dia }`
-        // }
-
-        // if (atualizado.mes < 10) {
-        //   atualizado.mes = `0${ atualizado.mes }`
-        // }
     
         Supermarket
           .findById(_id)
@@ -239,13 +252,15 @@ exports.update = (req, res) => {
             let products = [ ...supermarket.produtos ]
     
             products = products.map(product => {
-              const { produto_id: { api_id } } = product
+              const { produto_id: { _id } } = product
 
-              const product_in_request = data.produtos.find(({ _id }) => _id === String(api_id))
+              const product_in_request = data.produtos.find(({ 
+                produto_id
+              }) => String(produto_id._id) === String(_id))
   
               if (product_in_request) {
                 return {
-                  ...product,
+                  ...product._doc,
                   preco: product_in_request.preco,
                   atualizado
                 }
@@ -255,7 +270,8 @@ exports.update = (req, res) => {
             })
     
             data.produtos.forEach(({ produto_id, preco }) => {
-              const productIndex = products.findIndex(({ produto_id: { api_id } }) => String(api_id) === produto_id._id)
+              const productIndex = products
+                .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
     
               if (productIndex === -1) {
                 products.push({

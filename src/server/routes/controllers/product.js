@@ -213,7 +213,7 @@ exports.store = async (req, res) => {
     if (!sem_marca) {
       data.marca_id = {
         _id: data_marca._doc._id,
-        cache_id: 0 // (END) cache_id sempre 0
+        cache_id: 0
       }
     }
 
@@ -468,7 +468,8 @@ exports.single = (req, res) => {
       limit: limitQuery
     } = req.query
     const {
-      local
+      local,
+      undefineds = []
     } = req.body
 
     if (!limitQuery) {
@@ -478,7 +479,7 @@ exports.single = (req, res) => {
     console.log('product.single query', req.query)
     console.log('product.single params', req.params)
     console.log('product.single body', req.body)
-    
+
     Product.findById(_id)
       .select(select)
       .then(async single => {
@@ -565,6 +566,11 @@ exports.single = (req, res) => {
 
               break
             default:
+              single = functions.setUndefineds({
+                data: single,
+                undefineds
+              })
+
               res.status(200).json({ ok: true, data: single })
           }
   
