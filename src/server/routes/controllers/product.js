@@ -500,6 +500,8 @@ exports.single = (req, res) => {
               }
             
               let historic = []
+              let menor_preco
+              let count = 0
   
               const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
           
@@ -511,8 +513,12 @@ exports.single = (req, res) => {
                 if (region_index !== -1) {
                   const region = state.municipios[region_index]
 
+                  count = region.historico.length
+
                   const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
-          
+                  
+                  menor_preco = region.historico[0]
+
                   const supermarketsMiddleware = historic_paginaed.map(preco => ({
                     async fn() {
                       const supermarket = await Supermarket.findById(preco.supermercado_id._id)
@@ -537,8 +543,8 @@ exports.single = (req, res) => {
                 }
               }
               res.status(200).json({ 
-                ok: true, data: historic,
-                limit: limitQuery, count: historic.length
+                ok: true, data: historic, menor_preco,
+                limit: limitQuery, count
               })
               break
             case 'app-single-product-watch': 
@@ -580,6 +586,7 @@ exports.single = (req, res) => {
 
       })
       .catch(e => {
+        console.error(e)
         res.status(500).send()
       })
 			

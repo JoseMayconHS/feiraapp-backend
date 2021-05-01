@@ -8,7 +8,7 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome,  descricao
+      nome,  descricao, cache_id = 0, hash_identify_device = ''
     } = req.body
 
     const checkEmpty = {
@@ -22,7 +22,7 @@ exports.store = async (req, res) => {
     console.log('brand.store ', req.body)
 
     Brand.create({ 
-        nome, descricao
+        nome, descricao, cache_id, hash_identify_device 
       })
       .then(brand => {
         res.status(201).json({ ok: true, data: brand._doc })
@@ -37,51 +37,6 @@ exports.store = async (req, res) => {
     res.status(500).send()
   }
 }
-
-exports.storeFromCache = async (req, res) => {
-  // Ok
-  try {
-
-    const { 
-      nome,  descricao, cache
-    } = req.body
-
-    const checkEmpty = {
-      nome
-    }
-
-    if (functions.hasEmpty(checkEmpty)) {
-      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-    }
-
-    let cache_id = 0
-    let hash_identify_device = ''
-
-    if (cache) {
-      cache_id = req.body.id
-      hash_identify_device = req.body.hash_identify_device
-    }
-
-    console.log('brand.store ', req.body)
-
-    Brand.create({ 
-        nome, nome_key: remove_accents(nome).toLowerCase(), 
-        descricao, cache_id, hash_identify_device 
-      })
-      .then(brand => {
-        res.status(201).json({ ok: true, data: brand._doc })
-      })
-      .catch(e => {
-        console.error(e)
-        res.status(400).send()
-      })
-
-  } catch(err) {
-    console.log(err)
-    res.status(500).send()
-  }
-}
-
 
 exports.index = (req, res) => {
   // OK
