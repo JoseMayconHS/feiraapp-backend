@@ -1,4 +1,5 @@
 const route = require('express').Router(),
+	_defaultsControllers = require('../controllers/_defaults'),
 	userControllers = require('../controllers/user'),
 	productControllers = require('../controllers/product'),
 	brandControllers = require('../controllers/brand'),
@@ -12,6 +13,7 @@ route
 	// App
 	// Supermercado
 	.post('/auth/app/supermercado', supermarketControllers.store)
+	.post('/auth/app/supermercados', _defaultsControllers.storeList(supermarketControllers.save))
 	// Buscar sem produtos
 	.post('/auth/app/supermercado/:id', supermarketControllers.single)
 	.post('/auth/admin/supermercado', supermarketControllers.store)
@@ -23,16 +25,18 @@ route
 	.post('/auth/app/observar/:id', watchControllers.index)
 	// Marca
 	.post('/auth/app/marca', brandControllers.store)
+	.post('/auth/app/marcas', brandControllers.storeList)
 	.post('/auth/admin/marca', brandControllers.store)
 	// Marcas (Buscar por nome)
 	.post('/auth/app/marcas/:page', brandControllers.indexBy)
 	// Produto
 	.post('/auth/app/feira/finalizar', userControllers.shopping)
 	.post('/auth/app/produto', productControllers.store)
-	.post('/auth/admin/produto', productControllers.store)
+	.post('/auth/app/produtos', _defaultsControllers.storeList(productControllers.save))
 	.post('/auth/app/produtos/:page', productControllers.indexBy)
-	.post('/auth/admin/produtos/:page', productControllers.indexBy)
 	.post('/auth/app/produto/:id/:page', productControllers.single)
+	.post('/auth/admin/produtos/:page', productControllers.indexBy)
+	.post('/auth/admin/produto', productControllers.store)
 	.post('/auth/admin/produto/:id', productControllers.single)
 	// Dashboard
 	.post('/dashboard/signin', admControllers.sign)

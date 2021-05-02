@@ -6,6 +6,85 @@ const remove_accents = require('remove-accents'),
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
+exports.save = async ({ data, hash_identify_device = '' }) => {
+  try {
+
+    const { 
+      peso = {}, nome, sabor, tipo, favorito, sem_marca,
+      marca: marca_obj,
+      marca_id: marca = {},
+      cache_id = 0, precos = []
+    } = data
+
+    console.log('product.save ', data)
+
+    const { tipo: peso_tipo } = peso
+
+    const checkEmpty = {
+      nome, tipo, peso_tipo
+    }
+
+    if (!sem_marca && marca_obj) {
+      checkEmpty.marca_nome = marca_obj.nome
+    }
+
+    if (functions.hasEmpty(checkEmpty)) {
+      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+    }
+
+    let criar = !sem_marca
+    
+    let data_marca = false
+    if (!sem_marca) {
+      let brand = false
+
+      const { 
+        _id: marca_id
+      } = marca
+
+      if (marca_id && marca_id.length) {
+  
+        brand = await Brand.findById(marca_id)
+    
+        if (brand) {
+          criar = false
+        } 
+      } 
+  
+      if (criar && marca_obj) {
+        data_marca = await Brand.create({
+          nome: marca_obj.nome
+        })
+      } else {
+        data_marca = brand
+      }
+    }
+
+    const item = {
+      nome, favorito, tipo, peso, sem_marca, cache_id, hash_identify_device, precos
+    }
+
+    if (sabor.definido) {
+      item.sabor = sabor
+    }
+
+    if (!sem_marca) {
+      item.marca_id = {
+        _id: data_marca._doc._id,
+        cache_id: 0
+      }
+    }
+
+    const { _doc } = await Product.create(item)
+
+    return _doc
+
+  } catch(err) {
+    console.log(err)
+    return
+  }
+}
+
 function updatePrices({ 
   _id, local = {}, supermercado_id, preco_u, moment,
   finished
@@ -138,268 +217,22 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      peso = {}, nome, sabor, tipo, favorito, sem_marca,
-      marca: { 
-        nome: marca_nome
-      },
-      marca_id: marca = {},
+      hash_identify_device = ''
     } = req.body
-
-    const body = {
-      peso: { tipo: 'unidade', valor: '1', force_down: false },
-      favorito: true,
-      nome: 'Barbeador',
-      meu: true,
-      sem_marca: false,
-      sabor: { definido: true, nome: 'Chocolate' },
-      tipo: { texto: 'Lanche', texto_key: 'lanche' },
-      nome_key: 'barbeador',
-      marca_id: { _id: '', cache_id: 1 },
-      marca: { nome: 'Vale' }
-    }
 
     console.log('product.store ', req.body)
 
-    const { tipo: peso_tipo } = peso
+    const data = await save({
+      data: req.body, hash_identify_device
+    })
 
-    const checkEmpty = {
-      nome, tipo, peso_tipo
-    }
-
-    if (!sem_marca) {
-      checkEmpty.marca_nome = marca_nome
-    }
-
-    if (functions.hasEmpty(checkEmpty)) {
-      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-    }
-
-    let criar = !sem_marca
-    
-    let data_marca = false
-    if (!sem_marca) {
-      let brand = false
-
-      const { 
-        _id: marca_id
-      } = marca
-
-      if (marca_id && marca_id.length) {
-  
-        brand = await Brand.findById(marca_id)
-    
-        if (brand) {
-          criar = false
-        } 
-      } 
-  
-      if (criar) {
-        data_marca = await Brand.create({
-          nome: marca_nome
-        })
-      } else {
-        data_marca = brand
-      }
-    }
-
-    const data = {
-      nome, favorito, tipo, peso, sem_marca
-    }
-
-    if (sabor.definido) {
-      data.sabor = sabor
-    }
-
-    if (!sem_marca) {
-      data.marca_id = {
-        _id: data_marca._doc._id,
-        cache_id: 0
-      }
-    }
-
-    const data_produto = await Product.create(data)
-
-    res.status(201).json({ ok: true, data: data_produto._doc })
+    res.status(201).json({ ok: !!data, data })
 
   } catch(err) {
     console.log(err)
     res.status(500).send()
   }
 }
-
-exports.saveFromCache = async (req, res) => {
-  try {
-    // const { 
-    //   favorito,
-    //   fixado,
-    //   marca_id = {},
-    //   peso = {},
-    //   preco_u,
-    //   produto_nome,
-    //   tipo,
-    //   local = {},
-    //   supermercado_id,
-    //   cache,
-    // } = req.body
-
-    // const body = {
-    //   peso: { tipo: 'unidade', valor: '1', force_down: false },
-    //   favorito: true,
-    //   nome: 'Barbeador',
-    //   meu: true,
-    //   sem_marca: false,
-    //   tipo: { texto: 'Lanche', texto_key: 'lanche' },
-    //   precos: [ { estado_id: 12, municipios: [Array] } ],
-    //   nome_key: 'barbeador',
-    //   marca_id: { _id: '', cache_id: 1 }
-    // }
-
-    // console.log('product.store ', req.body)
-
-    // const { 
-    //   _id: marca_id, 
-    //   cache_id: marca_cache_id
-    // } = marca_id
-    // const { tipo: peso_tipo } = peso
-    // const { estado = {}, municipio = {} } = local
-
-    // const { id: estado_id, nome: estado_nome, sigla: estado_sigla } = estado
-    // const { id: municipio_id, nome: municipio_nome } = municipio
-
-    // const checkEmpty = {
-    //   produto_nome, tipo, marca_nome, peso_tipo
-    // }
-
-    // if (functions.hasEmpty(checkEmpty)) {
-    //   return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-    // }
-
-    // let data_marca = false
-
-    // let cache_id = 0
-    // let hash_identify_device = ''
-    // let supermercado_cache_id = ''
-
-    // if (cache) {
-    //   cache_id = req.body.id
-    //   hash_identify_device = req.body.hash_identify_device
-    //   supermercado_cache_id = supermercado_id
-    // }
-
-    // let criar = true
-    // let brand = false
-
-    // if ((cache && marca_id_cache) || !marca_id) {
-
-    //   if (cache) {
-    //     brand = await Brand.findById(marca_id_cache)
-
-    //     if (brand) {
-    //       criar = false
-    //     }
-    //   } 
-
-      
-    // } else if (marca_id) {
-    //   brand = await Brand.findById(String(marca_id))
-      
-    //   if (brand) {
-    //     criar = false
-    //   }
-    // }
-
-    // if (criar) {
-    //   data_marca = await Brand.create({
-    //     nome: marca_nome,
-    //     nome_key: marca_nome.toLowerCase(),
-    //     descricao: marca_descricao,
-    //     hash_identify_device
-    //   })
-    // } else {
-    //   data_marca = brand
-    // }
-
-    // const precos = Object.values(local).length ? [{
-    //   estado_id,
-    //   nome: estado_nome,
-    //   sigla: estado_sigla,
-    //   municipios: [{
-    //     nome: municipio_nome,
-    //     municipio_id,
-    //     menor_preco: {
-    //       supermercado_id,
-    //       preco: preco_u
-    //     },
-    //     maior_preco: {
-    //       supermercado_id: '',
-    //       preco: '0'
-    //     }
-    //   }]
-    // }] : []
-
-    // const marca_obj = {
-    //   marca_id: data_marca._doc._id,
-    //   nome: marca_nome
-    // }
-
-    // const data = {
-    //   nome: produto_nome, nome_key: remove_accents(produto_nome).toLocaleLowerCase(),
-    //   favorito, fixado, precos, marca: marca_obj, tipo, peso, 
-    //   cache_id, hash_identify_device, supermercado_cache_id
-    // }
-
-    // const data_produto = await Product.create(data)
-
-    // const user = await User.findById(user_id).select('produtos')
-
-    // const user_products = [ {
-    //   _id: data_produto._doc._id
-    // }, ...user.produtos ]
-
-    // await User.updateOne({ _id: user_id }, { produtos: user_products })
-
-    // if (!cache) {
-    //   if (supermercado_id) {
-    //     Supermarket
-    //       .findById(supermercado_id)
-    //       .select('produtos')
-    //       .then(supermarket => {
-    
-    //         let products = [ ...supermarket.produtos ]
-    
-    //         const productIndex = products.findIndex(({ produto_id }) => produto_id === String(data_produto._doc._id))
-    
-    //         if (productIndex !== -1) {
-    //           products[productIndex] = {
-    //             ...products[productIndex],
-    //             preco: preco_u
-    //           }
-    //         } else {
-    //           products = [ ...products, {
-    //             produto_id: data_produto._doc._id,
-    //             preco: preco_u
-    //           }]
-    //         }
-    
-    //         Supermarket.findByIdAndUpdate(supermercado_id, {
-    //           produtos: products
-    //         })
-    //       })
-    //       .catch(console.error)
-    //       .finally(() => {
-    //         res.status(201).json({ ok: true, data: data_produto._doc })
-    //       })
-    //   } else {
-    //     res.status(201).json({ ok: true, data: data_produto._doc })
-    //   }
-    // } else {
-    //   res.status(201).json({ ok: true, data: data_produto._doc })
-    // }
-  } catch(e) {
-    res.status(500).send()
-  }
-}
-
 
 exports.index = (req, res) => {
   // OK

@@ -38,6 +38,43 @@ exports.store = async (req, res) => {
   }
 }
 
+exports.storeList = async (req, res) => {
+  // Ok
+  try {
+
+    const { 
+      data = [], hash_identify_device = ''
+    } = req.body
+
+    console.log('brand.storeList ', req.body)
+
+    const response = []
+
+    const stacks = data.map(item => ({
+      async fn() {
+        try {
+          if (functions.hasEmpty({ nome: item.nome })) {
+            throw new Error('Existe campos vazios!')
+          }
+          const { _doc } = await Brand.create({ ...item, hash_identify_device })
+
+          _doc && response.push(_doc)
+        } catch(e) {
+          console.error(item, e)
+        }
+      }
+    }))
+
+    await functions.middlewareAsync(...stacks)
+
+    res.status(201).json({ ok: true, data: response })
+
+  } catch(err) {
+    console.log(err)
+    res.status(500).send()
+  }
+}
+
 exports.index = (req, res) => {
   // OK
 

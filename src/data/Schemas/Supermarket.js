@@ -14,14 +14,6 @@ const Supermarket =  new Schema({
 			return remove_accents(this.nome).toLowerCase()
 		}
 	},
-	local_estado_id: {
-		type: Number,
-		required: false,
-	},
-	local_municipio_id: {
-		type: Number,
-		required: false,
-	},
 	classificacao: {
 		type: Number,
 		default: 0

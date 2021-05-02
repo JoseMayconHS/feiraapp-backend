@@ -1,16 +1,13 @@
 const Product = require('../../../data/Schemas/Product'),
-  Brand = require('../../../data/Schemas/Brand'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
-exports.store = async (req, res) => {
-  // Ok
+exports.save = async ({ data, hash_identify_device = '' }) => {
   try {
-
     const { 
-      nome, local, cache, favorito
-    } = req.body
+      nome, local, favorito, produtos = [], cache_id = 0
+    } = data
 
     const { estado = {}, municipio = {} } = local
 
@@ -25,18 +22,8 @@ exports.store = async (req, res) => {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    let cache_id = 0
-    let hash_identify_device = ''
-
-    if (cache) {
-      cache_id = req.body.id,
-      hash_identify_device = req.body.hash_identify_device
-    }
-
-    const data = {
-      nome, local, cache_id, hash_identify_device,
-      local_estado_id: estado_id,
-      local_municipio_id: municipio_id,
+    const item = {
+      nome, local, cache_id, hash_identify_device, produtos,
       local: {
         estado: {
           cache_id: estado_id,
@@ -52,14 +39,64 @@ exports.store = async (req, res) => {
       favorito
     }
 
-    Supermarket.create(data)
-      .then(supermarket => {
-        res.status(201).json({ ok: true, data: supermarket._doc })
-      })
-      .catch(e => {
-        console.error(e)
-        res.status(400).send()
-      })
+    const { _doc } = await Supermarket.create(item)
+
+    return _doc
+  } catch(e) {
+    console.error(e)
+    return 
+  }
+}
+
+exports.store = async (req, res) => {
+  // Ok
+  try {
+
+    const { 
+      hash_identify_device = ''
+    } = req.body
+
+    const data = await save({
+      data: req.body, hash_identify_device
+    })
+
+    res.status(201).json({ ok: !!data, data })
+
+  } catch(err) {
+    console.log(err)
+    res.status(500).send()
+  }
+}
+
+exports.storeList = async (req, res) => {
+  // Ok
+  try {
+
+    const {
+      data = [], hash_identify_device = ''
+    } = req.body
+
+    const response = []
+
+    const stacks = data.map(item => ({
+      async fn() {
+        try {   
+
+          const save_response = await save({
+            data: item, hash_identify_device
+          })
+      
+          save_response && response.push(save_response)
+
+        } catch(e) {
+          console.error(e)
+        }
+      }
+    }))
+
+    stacks.length && await functions.middlewareAsync(...stacks)
+
+    res.status(201).json({ ok: true, data: response })
 
   } catch(err) {
     console.log(err)
