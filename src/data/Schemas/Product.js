@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose')
+const { Schema, model } = require('mongoose'),
 	remove_accents = require('remove-accents'),
 	{ _default, identify } = require('./rest')
 

@@ -1,7 +1,60 @@
-const rest = require('../../../data/Schemas/rest')
-const Watch = require('../../../data/Schemas/Watch')
+const Watch = require('../../../data/Schemas/Watch'),
+  functions = require('../../../functions')
 
-exports.create = async (req, res) => {
+exports.save = async ({
+  data, hash_identify_device = ''
+}) => {
+  try {
+
+    const {
+      push_token,
+      valor,
+      produto_id,
+      local, 
+      cache_id = 0
+    } = data
+
+    console.log('watch.save', data)
+
+    const { estado = {}, municipio = {} } = local
+
+    const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
+    const { nome: municipio_nome, _id: municipio_id } = municipio
+
+    const checkEmpty = {
+      municipio_nome, estado_nome, estado_sigla, valor, push_token
+    }
+
+    if (functions.hasEmpty(checkEmpty)) {
+      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+    }
+
+    const { _doc } = await Watch.create({
+      push_token, valor, produto_id,
+      cache_id, hash_identify_device,
+      local: {
+        estado: {
+          cache_id: estado_id,
+          nome: estado_nome,
+          sigla: estado_sigla
+        }, 
+        municipio: {
+          cache_id: municipio_id,
+          nome: municipio_nome,
+          estado_id
+        }
+      }
+    })
+
+    return _doc
+
+  } catch(e) {
+    console.error(e)
+    return
+  }
+}
+
+exports.store = async (req, res) => {
   try {
     // {
     //   push_token,
@@ -13,16 +66,17 @@ exports.create = async (req, res) => {
     //   local
     // }
 
+    const { 
+      hash_identify_device = ''
+    } = req.body
+
     console.log('watch.create', req.body)
 
-    Watch.create(req.body)
-      .then(watch => {
-        res.status(201).json({ ok: true, data: watch._doc })
-      }).catch(e => {
-        console.error(e)
-        res.status(400).send()
-      })
+    const data = await save({
+      data: req.body, hash_identify_device
+    })
 
+    res.status(201).json({ ok: !!data, data })
   } catch(e) {
     res.status(500).send()
   }

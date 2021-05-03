@@ -6,7 +6,7 @@ const Product = require('../../../data/Schemas/Product'),
 exports.save = async ({ data, hash_identify_device = '' }) => {
   try {
     const { 
-      nome, local, favorito, produtos = [], cache_id = 0
+      nome, local,  produtos = [], cache_id = 0
     } = data
 
     const { estado = {}, municipio = {} } = local
@@ -23,7 +23,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
     }
 
     const item = {
-      nome, local, cache_id, hash_identify_device, produtos,
+      nome, cache_id, hash_identify_device, produtos,
       local: {
         estado: {
           cache_id: estado_id,
@@ -36,7 +36,6 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
           estado_id
         }
       },
-      favorito
     }
 
     const { _doc } = await Supermarket.create(item)

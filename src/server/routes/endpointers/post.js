@@ -12,16 +12,17 @@ const route = require('express').Router(),
 route
 	// App
 	// Supermercado
-	.post('/auth/app/supermercado', supermarketControllers.store)
+	.post('/auth/app/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	.post('/auth/app/supermercados', _defaultsControllers.storeList(supermarketControllers.save))
 	// Buscar sem produtos
 	.post('/auth/app/supermercado/:id', supermarketControllers.single)
-	.post('/auth/admin/supermercado', supermarketControllers.store)
+	.post('/auth/admin/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	// Supermercado (Buscar por localizacao)
 	.post('/auth/app/supermercados/:page', supermarketControllers.index)
 	.post('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Observar
-	.post('/auth/app/observar', watchControllers.create)
+	.post('/auth/app/observar', _defaultsControllers.store(watchControllers.save))
+	.post('/auth/app/observacoes', _defaultsControllers.storeList(watchControllers.save))
 	.post('/auth/app/observar/:id', watchControllers.index)
 	// Marca
 	.post('/auth/app/marca', brandControllers.store)
@@ -31,12 +32,12 @@ route
 	.post('/auth/app/marcas/:page', brandControllers.indexBy)
 	// Produto
 	.post('/auth/app/feira/finalizar', userControllers.shopping)
-	.post('/auth/app/produto', productControllers.store)
+	.post('/auth/app/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/app/produtos', _defaultsControllers.storeList(productControllers.save))
 	.post('/auth/app/produtos/:page', productControllers.indexBy)
 	.post('/auth/app/produto/:id/:page', productControllers.single)
 	.post('/auth/admin/produtos/:page', productControllers.indexBy)
-	.post('/auth/admin/produto', productControllers.store)
+	.post('/auth/admin/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/admin/produto/:id', productControllers.single)
 	// Dashboard
 	.post('/dashboard/signin', admControllers.sign)
@@ -45,9 +46,9 @@ route
 	.post('/auth/admin/expo', pushNotificationControllers.send)
 	.post('/auth/admin/marca', brandControllers.store)
 	// Do cache para a api
-	.post('/auth/app/cache/produto', productControllers.store)
+	.post('/auth/app/cache/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/app/cache/marca', brandControllers.store)
-	.post('/auth/app/cache/supermercado', supermarketControllers.store)
+	.post('/auth/app/cache/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	.post('/auth/app/cache/cache-to-api/:hash', userControllers.cacheToAPI)
 
 module.exports = app => app.use(route)

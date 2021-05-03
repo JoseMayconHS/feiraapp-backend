@@ -11,7 +11,15 @@ const Watch = new Schema({
     required: true
   },
   produto_id: identify,
-  local: locale
+  local: locale,
+  cache_id: {
+    type: Number,
+    default: 0
+  },
+  hash_identify_device: {
+    type: String,
+    default: ''
+  }
 }, {
   timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

@@ -4,13 +4,14 @@ const remove_accents = require('remove-accents'),
   Brand = require('../../../data/Schemas/Brand'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
   functions = require('../../../functions'),
+  pushNotificationControllers = require('./pushNotification'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.save = async ({ data, hash_identify_device = '' }) => {
   try {
 
     const { 
-      peso = {}, nome, sabor, tipo, favorito, sem_marca,
+      peso = {}, nome, sabor, tipo, sem_marca,
       marca: marca_obj,
       marca_id: marca = {},
       cache_id = 0, precos = []
@@ -61,7 +62,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
     }
 
     const item = {
-      nome, favorito, tipo, peso, sem_marca, cache_id, hash_identify_device, precos
+      nome, tipo, peso, sem_marca, cache_id, hash_identify_device, precos
     }
 
     if (sabor.definido) {
@@ -202,6 +203,12 @@ function updatePrices({
 
         Product
           .updateOne({ _id }, data_update)
+          .then(async () => {
+            await pushNotificationControllers
+              .notify({ 
+                _id, preco: preco_u, local, supermercado_id, moment
+              })
+          })
           .then(resolve)
           .catch(reject)
       })
@@ -785,12 +792,11 @@ exports.update = (req, res) => {
             try {
               console.log('updatePrices props ', {
                 _id, 
-                estado, municipio, 
+                local: { estado, municipio }, 
                 supermercado_id, preco_u 
               })
               await updatePrices({
-                _id, 
-                estado, municipio, 
+                _id, local: { estado, municipio }, 
                 supermercado_id, preco_u 
               })
 

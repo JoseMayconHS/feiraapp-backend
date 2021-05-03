@@ -39,3 +39,23 @@ exports.storeList = (save) => {
     }
   }
 }
+
+exports.store = save => {
+  return async (req, res) => {
+    try { 
+      const { 
+        hash_identify_device = ''
+      } = req.body
+  
+      console.log('_defaults.store', req.body)
+      
+      const data = await save({
+        data: req.body, hash_identify_device
+      })
+  
+      res.status(201).json({ ok: !!data, data })
+    } catch(e) {
+      res.status(500).send()
+    }
+  }
+} 

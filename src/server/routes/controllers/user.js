@@ -4,6 +4,7 @@ const bcryptjs = require('bcryptjs'),
   Product = require('../../../data/Schemas/Product'),
   Brand = require('../../../data/Schemas/Brand'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
+  Watch = require('../../../data/Schemas/Watch'),
   functions = require('../../../functions'),
   generatePassword = require('generate-password'),
   service_email = require('../../../services/email'),
@@ -22,7 +23,7 @@ exports.cacheToAPI = async (req, res) => {
       return res.status(400).send()
     }
 
-    const { supermercado, marca, produto } = cache
+    const { supermercado, marca, produto, notificacao } = cache
 
     console.log('Finalizar cache', { hash_identify_device, cache })
 
@@ -31,6 +32,7 @@ exports.cacheToAPI = async (req, res) => {
       // COISAS QUE DEVO FAZER
       // - MUDAR O cache_id DO SUPERMERCADO NA ESTRUTURA DE PRECOS DOS PRODUTOS COM ESSE HASH PARA O _id DO SUPERMERCADO JÁ INSERIDO NO BANDO DE DADOS
       // - ADICIONAR O PRODUTOS E VALORES NOS SUPERMERCADOS
+      // - VERIFICAR SE DEVO NOTIFICAR ALGUEM
 
       const supermarkets = await Supermarket
         .find({ hash_identify_device })
@@ -93,6 +95,10 @@ exports.cacheToAPI = async (req, res) => {
       // item.precos.municipios.municipio_id.historico.supermercado_id._id
 
       await Supermarket.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
+    }
+
+    if (notificacao) {
+      await Watch.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
     }
 
     res.status(200).send()
