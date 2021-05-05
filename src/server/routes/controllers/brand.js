@@ -250,14 +250,17 @@ exports.remove = (req, res) => {
 
     const { id: _id } = req.params
 
+    if (typeof _id !== 'string')
+      throw new Error()
+
     Brand.findByIdAndDelete(_id)
-    .then(() => {
-      res.status(200).send()
-    })
-    .catch(err => {
-      console.error(err)
-      res.status(400).send()
-    })
+      .then(() => {
+        res.status(200).send()
+      })
+      .catch(err => {
+        console.error(err)
+        res.status(400).send()
+      })
 
   } catch(e) {
     res.status(500).send(e)

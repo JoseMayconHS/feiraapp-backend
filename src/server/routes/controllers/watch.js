@@ -54,6 +54,17 @@ exports.save = async ({
   }
 }
 
+exports._update = async ({
+  data, hash_identify_device = ''
+}) => {
+  try {
+    console.log('watch._update', data)
+
+  } catch(e) {
+    console.error(e)
+  }
+}
+
 exports.store = async (req, res) => {
   try {
     // {

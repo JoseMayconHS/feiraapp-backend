@@ -1,27 +1,36 @@
 const functions = require('../../../functions')
 
-exports.storeList = (save) => {
+exports.storeList = ({
+  save, update, schema
+}) => {
   return async (req, res) => {
     // Ok
     try {
   
       const {
-        data = [], hash_identify_device = ''
+        data = [], hash_identify_device = '', local
       } = req.body
-
-      console.log('storeList ', req.body)
   
       const response = []
   
       const stacks = data.map(item => ({
         async fn() {
-          try {   
-  
-            const save_response = await save({
-              data: item, hash_identify_device
-            })
-        
-            save_response && response.push(save_response)
+          try {
+            let data
+
+            if (item.api_id.length) {
+              await update({
+                data: item, hash_identify_device, local
+              })
+
+              data = item
+            } else {
+              data = await save({
+                data: item, hash_identify_device
+              })
+            }
+
+            data && response.push(data)
   
           } catch(e) {
             console.error(e)

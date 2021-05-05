@@ -11,7 +11,6 @@ const bcryptjs = require('bcryptjs'),
   limit = +process.env.LIMIT_PAGINATION || 10,
   service_email_token = process.env.SERVICE_EMAIL_TOKEN || ''
 
-
 exports.cacheToAPI = async (req, res) => {
   try {
     const { hash: hash_identify_device = '' } = req.params
@@ -46,17 +45,32 @@ exports.cacheToAPI = async (req, res) => {
             const products_middleware = produtos.map(product => ({
               async fn() {
                 try {
-                  const product_data = await Product
-                    .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
-                    .select('_id')
-    
-                  new_products.push({
-                    ...product._doc,
-                    produto_id: {
-                      cache_id: 0,
-                      _id: product_data._id
-                    }
-                  })
+                  console.log('cacheToApi()', { product })
+
+                  if (product.produto_id._id.length) {
+                    new_products.push({
+                      ...product._doc,
+                      produto_id: {
+                        cache_id: 0,
+                        _id: product.produto_id._id
+                      }
+                    })
+                  } else {
+                    const product_data = await Product
+                      .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
+                      .select('_id')
+                      
+                      if (product_data) {
+                        new_products.push({
+                          ...product._doc,
+                          produto_id: {
+                            cache_id: 0,
+                            _id: product_data._id
+                          }
+                        })
+                      }
+                  }
+                  
                 } catch(e) {
                   console.error(e)
                 }

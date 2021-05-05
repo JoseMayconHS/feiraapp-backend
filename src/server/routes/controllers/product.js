@@ -86,6 +86,19 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
   }
 }
 
+exports._update = async ({
+  data, hash_identify_device = '', local
+}) => {
+  try {
+    console.log('product._update', { data, local })
+
+    // (END) ATUALIZAR OS PRECOS
+
+  } catch(e) {
+    console.error(e)
+  }
+}
+
 function updatePrices({ 
   _id, local = {}, supermercado_id, preco_u, moment,
   finished
@@ -905,7 +918,14 @@ exports.remove = (req, res) => {
     if (typeof _id !== 'string')
       throw new Error()
 
-
+      Product.findByIdAndDelete(_id)
+        .then(() => {
+          res.status(200).send()
+        })
+        .catch(err => {
+          console.error(err)
+          res.status(400).send()
+        })
 
   } catch(e) {
     res.status(500).send(e)

@@ -47,6 +47,32 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
   }
 }
 
+exports._update = async ({
+  data, hash_identify_device = ''
+}) => {
+  try {
+    console.log('supermarket._update', data)
+
+    // (END) ATUALIZAR A LISTA DE PRODUTOS
+    // COLA
+    // const produtos = [SUPERMERCADO_REQUEST].produtos
+    //   .filter(({ produto_id: produto_id_request }) => {
+    //     return [SUPERMERCADO_MONGO]
+    //       .produtos
+    //       .findIndex(({ produto_id }) => {
+
+    //         const  { cache_id, _id: mongo_id } = produto_id
+    //         const  { cache_id: cache_id_request, _id: mongo_id_request } = produto_id_request
+
+    //         return (mongo_id_request.length && mongo_id === mongo_id_request) || cache_id_request && (cache_id_request === cache_id) 
+    //       }) === -1
+    //   })
+
+  } catch(e) {
+    console.error(e)
+  }
+}
+
 exports.store = async (req, res) => {
   // Ok
   try {
@@ -120,8 +146,15 @@ exports.index = (req, res) => {
     console.log({ where })
 
     if (where) {
+      let find = {}
 
-      Supermarket.find()
+      if (where.nome) {
+        const regex = new RegExp(where.nome)
+
+        find.nome_key = { $regex: regex, $options: 'g' }
+      }
+
+      Supermarket.find(find)
         .populate()
         .where('status', true)
         .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
@@ -130,7 +163,7 @@ exports.index = (req, res) => {
         .then(Documents => {
           const count = Documents.length
 
-          Supermarket.find()
+          Supermarket.find(find)
             .populate()
             .where('status', true)
             .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
@@ -446,7 +479,14 @@ exports.remove = (req, res) => {
     if (typeof _id !== 'string')
       throw new Error()
 
-
+      Supermarket.findByIdAndDelete(_id)
+        .then(() => {
+          res.status(200).send()
+        })
+        .catch(err => {
+          console.error(err)
+          res.status(400).send()
+        })
 
   } catch(e) {
     res.status(500).send(e)
