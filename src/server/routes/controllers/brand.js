@@ -21,16 +21,26 @@ exports.store = async (req, res) => {
 
     console.log('brand.store ', req.body)
 
-    Brand.create({ 
-        nome, descricao, cache_id, hash_identify_device 
-      })
-      .then(brand => {
-        res.status(201).json({ ok: true, data: brand._doc })
-      })
-      .catch(e => {
+    let response
+
+    response = await Brand.findOne({
+      nome_key: functions.keyWord(nome)
+    })
+
+    if (response) {
+      res.status(201).json({ ok: true, data: { ...response._doc, cache_id } })
+    } else {
+      try {
+        response = await Brand.create({ 
+          nome, descricao, cache_id, hash_identify_device 
+        })
+
+        res.status(201).json({ ok: true, data: response._doc })
+      } catch(e) {
         console.error(e)
         res.status(400).send()
-      })
+      }
+    }
 
   } catch(err) {
     console.log(err)
@@ -56,9 +66,21 @@ exports.storeList = async (req, res) => {
           if (functions.hasEmpty({ nome: item.nome })) {
             throw new Error('Existe campos vazios!')
           }
-          const { _doc } = await Brand.create({ ...item, hash_identify_device })
 
-          _doc && response.push(_doc)
+          const already = await Brand.findOne({
+            nome_key: functions.keyWord(item.nome)
+          })
+
+          console.log('brand.storeList already', already)
+
+          if (already) {
+            response.push({ ...already._doc, cache_id: item.cache_id })
+          } else {
+            const { _doc } = await Brand.create({ ...item, hash_identify_device })
+
+            _doc && response.push(_doc)
+          }
+
         } catch(e) {
           console.error(item, e)
         }

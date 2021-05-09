@@ -1,6 +1,7 @@
 const { Schema, model } = require('mongoose'),
 	remove_accents = require('remove-accents'),
-	{ _default } = require('./rest')
+	{ _default } = require('./rest'),
+	functions = require('../../functions')
 
 const Brand =  new Schema({
 	nome: {

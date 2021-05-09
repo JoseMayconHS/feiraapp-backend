@@ -33,60 +33,62 @@ exports.cacheToAPI = async (req, res) => {
       // - ADICIONAR O PRODUTOS E VALORES NOS SUPERMERCADOS
       // - VERIFICAR SE DEVO NOTIFICAR ALGUEM
 
-      const supermarkets = await Supermarket
-        .find({ hash_identify_device })
-        .select('produtos _id')
+      // const supermarkets = await Supermarket
+      //   .find({ hash_identify_device })
+      //   .select('produtos _id')
 
-      const supermarkets_middleware = supermarkets.map(({ produtos = [], _id }) => ({
-        async fn() {
-          try {
-            const new_products = []
+      // const supermarkets_middleware = supermarkets.map(({ produtos = [], _id }) => ({
+      //   async fn() {
+      //     try {
+      //       const new_products = []
   
-            const products_middleware = produtos.map(product => ({
-              async fn() {
-                try {
-                  console.log('cacheToApi()', { product })
+      //       const products_middleware = produtos.map(product => ({
+      //         async fn() {
+      //           try {
+      //             console.log('cacheToApi()', { product })
 
-                  if (product.produto_id._id.length) {
-                    new_products.push({
-                      ...product._doc,
-                      produto_id: {
-                        cache_id: 0,
-                        _id: product.produto_id._id
-                      }
-                    })
-                  } else {
-                    const product_data = await Product
-                      .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
-                      .select('_id')
+      //             if (product.produto_id._id.length) {
+      //               new_products.push({
+      //                 ...product._doc,
+      //                 produto_id: {
+      //                   cache_id: 0,
+      //                   _id: product.produto_id._id
+      //                 }
+      //               })
+      //             } else {
+      //               const product_data = await Product
+      //                 .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
+      //                 .select('_id')
                       
-                      if (product_data) {
-                        new_products.push({
-                          ...product._doc,
-                          produto_id: {
-                            cache_id: 0,
-                            _id: product_data._id
-                          }
-                        })
-                      }
-                  }
+      //                 if (product_data) {
+      //                   new_products.push({
+      //                     ...product._doc,
+      //                     produto_id: {
+      //                       cache_id: 0,
+      //                       _id: product_data._id
+      //                     }
+      //                   })
+      //                 } else {
+      //                   new_products.push(product._doc)
+      //                 }
+      //             }
                   
-                } catch(e) {
-                  console.error(e)
-                }
-              }
-            }))
+      //           } catch(e) {
+      //             console.error(e)
+      //           }
+      //         }
+      //       }))
   
-            await functions.middlewareAsync(...products_middleware)
+      //       await functions.middlewareAsync(...products_middleware)
     
-            await Supermarket.findByIdAndUpdate(_id, { produtos: new_products, hash_identify_device: '', cache_id: 0 })
-          } catch(e) {
-            console.error(e)
-          }
-        }
-      }))
+      //       await Supermarket.findByIdAndUpdate(_id, { produtos: new_products, hash_identify_device: '', cache_id: 0 })
+      //     } catch(e) {
+      //       console.error(e)
+      //     }
+      //   }
+      // }))
 
-      await functions.middlewareAsync(...supermarkets_middleware)
+      // await functions.middlewareAsync(...supermarkets_middleware)
 
       await Product.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
     }
@@ -115,7 +117,7 @@ exports.cacheToAPI = async (req, res) => {
       await Watch.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
     }
 
-    res.status(200).send()
+    res.status(200).json({ ok: true })
 
   } catch(e) {
     console.error(e)

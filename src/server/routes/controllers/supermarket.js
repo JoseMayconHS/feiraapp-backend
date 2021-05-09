@@ -9,6 +9,8 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
       nome, local,  produtos = [], cache_id = 0
     } = data
 
+    console.log('supermarket.save() data', data)
+
     const { estado = {}, municipio = {} } = local
 
     const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
@@ -38,9 +40,49 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
       },
     }
 
-    const { _doc } = await Supermarket.create(item)
+    const alreadyExists = async () => {
+      let response
+      try {
+        const already = await Supermarket.findOne({ nome_key: functions.keyWord(item.nome) })
 
-    return _doc
+        if (already) {
+          const { _doc } = already
+
+          if (_doc.local.estado.cache_id === item.local.estado.cache_id) {
+            if (_doc.local.municipio.cache_id === item.local.municipio.cache_id) {
+              response = _doc
+            }
+          }
+
+        }
+
+      } catch(e) {
+        console.error('supermarket.alreadyExists()', e)
+      } finally {
+        return response
+      }
+    }
+
+    const response = await alreadyExists()
+
+    console.log('supermarket.response', response)
+
+    if (response) {
+
+      const { _doc: new_doc } = await Supermarket.findByIdAndUpdate(response._id, { cache_id, hash_identify_device, descricao: item.descricao }, { new: true })
+
+      if (item.produtos.length) {
+        await this._update({ hash_identify_device, data: item, mongo_data: new_doc })
+      }
+
+      return { ...new_doc, cache_id }
+
+    } else {
+      const { _doc } = await Supermarket.create(item)
+  
+      return _doc
+    }
+
   } catch(e) {
     console.error(e)
     return 
@@ -48,28 +90,109 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 }
 
 exports._update = async ({
-  data, hash_identify_device = ''
+  data, hash_identify_device = '', mongo_data
 }) => {
   try {
-    console.log('supermarket._update', data)
+    console.log('supermarket._update', { data, mongo_data, hash_identify_device })
+
+    if (!mongo_data) {
+      const { _doc } = await Supermarket.findById(data.api_id)
+
+      mongo_data = _doc
+    }
 
     // (END) ATUALIZAR A LISTA DE PRODUTOS
     // COLA
-    // const produtos = [SUPERMERCADO_REQUEST].produtos
-    //   .filter(({ produto_id: produto_id_request }) => {
-    //     return [SUPERMERCADO_MONGO]
-    //       .produtos
-    //       .findIndex(({ produto_id }) => {
+    const produtos = data.produtos
+      .filter((produto) => {
+        console.log('data.produtos.produto', produto)
 
-    //         const  { cache_id, _id: mongo_id } = produto_id
-    //         const  { cache_id: cache_id_request, _id: mongo_id_request } = produto_id_request
+        if (mongo_data) {
+          const { produto_id: produto_id_request } = produto
+          return mongo_data
+            .produtos
+            .findIndex(({ produto_id }) => {
+  
+              const  { cache_id, _id: mongo_id } = produto_id
+              const  { cache_id: cache_id_request, _id: mongo_id_request } = produto_id_request
+  
+              // || cache_id_request && (cache_id_request === cache_id) 
 
-    //         return (mongo_id_request.length && mongo_id === mongo_id_request) || cache_id_request && (cache_id_request === cache_id) 
-    //       }) === -1
-    //   })
+              return (mongo_id_request.length && mongo_id === mongo_id_request) 
+            }) === -1
+        } else {
+          return false
+        }
 
+      })
+
+      const new_products = []
+  
+      const products_middleware = produtos.map(product => ({
+        async fn() {
+          try {
+            console.log('products_middleware.product', product)
+
+            // (END) PERSISIR hash_identify_device E cache_id
+            // PARA AJUDAR A LOCALIZAR OS ITENS
+
+            if (product.produto_id._id.length) {
+              new_products.push({
+                ...product,
+                produto_id: {
+                  cache_id: 0,
+                  _id: product.produto_id._id
+                }
+              })
+            } else {
+              const product_data = await Product
+                .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
+                .select('_id')
+              
+              if (product_data) {
+                new_products.push({
+                  ...product,
+                  produto_id: {
+                    cache_id: 0,
+                    _id: product_data._id
+                  }
+                })
+              } else {
+                new_products.push(product)
+              }
+            }
+            
+          } catch(e) {
+            console.error(e)
+          }
+        }
+      }))
+
+    await functions.middlewareAsync(...products_middleware)
+
+    console.log('new_products[0]', new_products[0])
+
+    const produtos_join = [...new_products, ...mongo_data.produtos]
+
+    console.log('produtos_join', produtos_join)
+
+    const produtos_clean = produtos_join.filter((product, index) => {
+      return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
+    })
+
+    console.log('produtos_clean', produtos_clean)
+
+    const { _doc } = await Supermarket
+      .findByIdAndUpdate(
+        mongo_data ? mongo_data._id : data.api_id, 
+        { produtos: produtos_clean, hash_identify_device: '', cache_id: 0 }, 
+        { new: true }
+      )
+
+    return _doc
   } catch(e) {
     console.error(e)
+    return data
   }
 }
 

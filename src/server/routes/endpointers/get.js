@@ -15,6 +15,10 @@ const html = `
 
 route
 	.get('/__origin__', (req, res) => res.send(html))
+	.get('/auth/app/test', (req, res) => {
+		console.log('ok')
+		res.send()
+	})
 	.get('/already', admControllers.qtd)
 	// Produto
 	.get('/auth/admin/produto/:page', productControllers.index)

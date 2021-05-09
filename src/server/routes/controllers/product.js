@@ -7,7 +7,9 @@ const remove_accents = require('remove-accents'),
   pushNotificationControllers = require('./pushNotification'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
-exports.save = async ({ data, hash_identify_device = '' }) => {
+exports.save = async ({ 
+    data, hash_identify_device = '', local
+  }) => {
   try {
 
     const { 
@@ -52,10 +54,19 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
         } 
       } 
   
-      if (criar && marca_obj) {
-        data_marca = await Brand.create({
-          nome: marca_obj.nome
-        })
+      if (criar) {
+        if (marca_obj) {
+          data_marca = await Brand.findOne({
+            nome_key: functions.keyWord(marca_obj.nome)
+          })
+
+          if (!data_marca) {
+            data_marca = await Brand.create({
+              nome: marca_obj.nome
+            })
+          }
+
+        }
       } else {
         data_marca = brand
       }
@@ -71,14 +82,84 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 
     if (!sem_marca) {
       item.marca_id = {
-        _id: data_marca._doc._id,
+        _id: data_marca ? data_marca._doc._id : '',
         cache_id: 0
       }
     }
 
-    const { _doc } = await Product.create(item)
+    const alreadyExists = async () => {
+      let response
+      try {
+        const already = await Product.findOne({ nome_key: functions.keyWord(item.nome) })
 
-    return _doc
+        if (already) {
+          const { _doc } = already
+
+          const verifyType = () => {
+            return (functions.keyWord(item.tipo.texto) === _doc.tipo.texto_key)
+          }
+
+          const verifyWeight = () => {
+            if (item.peso.tipo === _doc.peso.tipo) {
+              if (item.peso.valor === _doc.peso.valor && item.peso.force_down === _doc.peso.force_down) {
+                return true
+              }
+            }
+
+            return false
+          }
+
+          const verifyBrand = () => {
+            return String(item.marca_id._id) === String(_doc.marca_id._id)
+          }
+
+          if (item.marca_id) {
+            if (verifyBrand()) {
+              if (verifyWeight()) {
+                if (verifyType()) {
+                  response = _doc
+                }
+              }
+            }
+          } else {
+            if (_doc.sem_marca) {
+              if (verifyType()) {
+                if (verifyWeight()) {
+                  response = _doc
+                }
+              }
+            }
+          }
+
+        }
+
+      } catch(e) {
+        console.error('product.alreadyExists()', e)
+      } finally {
+        return response
+      }
+    }
+
+    let response = await alreadyExists() 
+
+    if (response) {
+      console.log('item.precos', item.precos)
+      if (item.precos.length) {
+        console.log('item.precos.municipios', item.precos[0].municipios)
+        console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
+        await this._update({
+          data: item, local, mongo_data: response
+        })
+      }
+
+      const { _doc: new_doc } = await Product.findByIdAndUpdate(response._id, { cache_id, hash_identify_device }, { new: true })
+
+      return { ...new_doc, cache_id }
+    } else {
+      const { _doc } = await Product.create(item)
+
+      return _doc
+    }
 
   } catch(err) {
     console.log(err)
@@ -87,15 +168,188 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 }
 
 exports._update = async ({
-  data, hash_identify_device = '', local
+  data, hash_identify_device = '', local, mongo_data
 }) => {
   try {
-    console.log('product._update', { data, local })
+    console.log('product._update', { data, local, mongo_data })
+    let response = data
+
+    const body = {
+      precos: [{
+        estado_id: 1,
+        municipios: [{
+          municipio_id: 11,
+          menor_preco: {
+            preco: '1.1',
+            supermercado_id: {
+              cache_id: 0,
+              _id: '2bsad'
+            }
+          },
+          historico: [{
+            preco: '1.1',
+            supermercado_id: {
+              cache_id: 0,
+              _id: '2bsad'
+            },
+            data: {
+              dia: 1, mes: 11, ano: 1111
+            }
+          }]
+        }]
+      }]
+    }
+
+    if (!mongo_data) {
+      const { _doc } = await Product.findById(data.api_id)
+
+      mongo_data = _doc
+    }
+
+    if (mongo_data) {
+    
+      const mongo_precos = mongo_data.precos
+      const precos = data.precos
+
+      console.log('product._update()', { mongo_precos, precos })
+    
+      const mongo_state_index = mongo_precos.findIndex(preco => preco.estado_id === local.estado._id)
+      const state_index = precos.findIndex(preco => preco.estado_id === local.estado._id)
+  
+      if (mongo_state_index !== -1 && state_index !== -1) {
+        const state = mongo_precos[mongo_state_index]
+  
+        const mongo_region_index = mongo_precos[mongo_state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
+        const region_index = precos[state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
+  
+        if (mongo_region_index !== -1 && region_index !== -1) {
+          const mongo_price = mongo_precos[mongo_state_index].municipios[mongo_region_index]
+          const price = precos[state_index].municipios[region_index]
+  
+          // (EX) SE ESTA FUNCIONANDO SERTO
+          console.log('historico antes')
+          console.log([...price.historico, ...mongo_price.historico])
+          price.historico = [...price.historico, ...mongo_price.historico].sort((a, b) => {
+            if (a.data.ano === b.data.ano) {
+              if (a.data.mes === b.data.mes) {
+                if (a.data.dia === b.data.dia) {
+                  return 0
+                } else if (a.data.dia < b.data.dia) {
+                  return -1
+                } else {
+                  return 1
+                }
+              } else if (a.data.mes < b.data.mes) {
+                return -1
+              } else {
+                return 1
+              }
+            } else if (a.data.ano < b.data.ano) {
+              return -1
+            } else {
+              return 1
+            }
+          })
+
+          console.log('historico depois')
+          console.log(price.historico)
+
+          
+          console.log('antes', { mongo_price, price })
+          
+          if (
+            (+mongo_price.menor_preco.preco === 0) || 
+            (+price.menor_preco.preco < +mongo_price.menor_preco.preco)
+          ) {
+            mongo_price.menor_preco.preco = price.menor_preco.preco
+            mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
+          } else if (
+            (+mongo_price.maior_preco.preco === 0) || 
+            (+price.maior_preco.preco > +mongo_price.maior_preco.preco) ||
+            (+price.menor_preco.preco > +mongo_price.maior_preco.preco)
+          ) {
+            if (price.maior_preco.supermercado_id) {
+              mongo_price.maior_preco.preco = price.maior_preco.preco
+              mongo_price.maior_preco.supermercado_id = price.maior_preco.supermercado_id
+            } else {
+              mongo_price.maior_preco.preco = price.menor_preco.preco
+              mongo_price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
+            }
+          }
+
+          mongo_price.historico = price.historico
+
+          console.log('depois', { mongo_price, price })
+  
+          const municipios = mongo_precos[mongo_state_index].municipios
+  
+          municipios.splice(mongo_region_index, 1, mongo_price)
+  
+          mongo_precos[mongo_state_index].municipios = municipios
+        } else {
+          // SE NAO TIVER ESSE MUNICIPIO
+
+          if (region_index !== -1) {
+            const price = precos[state_index].municipios[region_index]
+    
+            const _result = {
+              municipio_id: local.municipio._id,
+              menor_preco: price.menor_preco,
+              maior_preco: price.maior_preco || { preco: '0' },
+              historico: price.historico || []
+            }
+    
+            state.municipios.push(_result)
+    
+            mongo_precos.splice(mongo_state_index, 1, state)
+          }
+  
+        }
+      } else {
+        // SE NAO TIVER ESSE ESTADO
+
+        if (state_index !== -1) {
+          const region_index = precos[state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
+
+          if (region_index !== -1) {
+            const price = precos[state_index].municipios[region_index]
+  
+            const _result = {
+              estado_id: local.estado._id,
+              municipios: [{
+                municipio_id: local.municipio._id,
+                menor_preco: price.menor_preco,
+                maior_preco: price.maior_preco || { preco: '0' },
+                historico: price.historico || []
+              }]
+            }
+      
+            mongo_precos.push(_result)
+          }
+
+        }
+  
+      }
+
+      console.log('product._update end', { mongo_precos })
+
+      const { _doc } = await Product
+        .findByIdAndUpdate(
+          mongo_data ? mongo_data._id : data.api_id, 
+          { precos: mongo_precos }, 
+          { new: true }
+        )
+
+      response = _doc
+    }
 
     // (END) ATUALIZAR OS PRECOS
 
+    return response
+
   } catch(e) {
     console.error(e)
+    return data
   }
 }
 
@@ -650,6 +904,8 @@ exports.indexBy = async (req, res) => {
       }))
 
       await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
+
+      data.precos = []
 
       res.status(200).json({ ok: true, data, limit: limitQuery })
     }

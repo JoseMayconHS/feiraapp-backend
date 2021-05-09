@@ -19,14 +19,12 @@ exports.storeList = ({
             let data
 
             if (item.api_id.length) {
-              await update({
+              data = await update({
                 data: item, hash_identify_device, local
               })
-
-              data = item
             } else {
               data = await save({
-                data: item, hash_identify_device
+                data: item, hash_identify_device, local
               })
             }
 

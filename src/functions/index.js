@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs'),
+  remove_accents = require('remove-accents'),
   crypto = require('crypto'),
   algorithm = 'aes-256-ctr',
   iv = crypto.randomBytes(16)
@@ -70,6 +71,8 @@ exports.setUndefineds = ({
 
   return data
 }
+
+exports.keyWord = (word) => remove_accents(word).toLowerCase()
 
 exports.token = _id => {
   return new Promise((resolve, reject) => {
