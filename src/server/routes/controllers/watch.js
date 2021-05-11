@@ -145,3 +145,23 @@ exports.remove = async (req, res) => {
     res.status(500).send()
   }
 }
+
+exports.removes = async (req, res) => {
+  try {
+    const { ids = [] } = req.headers
+
+    console.log('watch.removes ids', ids)
+
+    if (ids.length) {
+      await Watch
+        .deleteMany()
+        .where('_id').in(ids)
+    }
+
+    res.status(200).send()
+
+  } catch(e) {
+    console.error('watch.removes catch', e)
+    res.status(500).send()
+  }
+}

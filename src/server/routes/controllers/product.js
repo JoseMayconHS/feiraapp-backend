@@ -16,10 +16,10 @@ exports.save = async ({
       peso = {}, nome, sabor, tipo, sem_marca,
       marca: marca_obj,
       marca_id: marca = {},
-      cache_id = 0, precos = []
+      cache_id = 0, precos = [], status
     } = data
 
-    console.log('product.save ', data)
+    // console.log('product.save ', data)
 
     const { tipo: peso_tipo } = peso
 
@@ -73,7 +73,7 @@ exports.save = async ({
     }
 
     const item = {
-      nome, tipo, peso, sem_marca, cache_id, hash_identify_device, precos
+      nome, tipo, peso, sem_marca, cache_id, hash_identify_device, precos, status
     }
 
     if (sabor.definido) {
@@ -143,10 +143,10 @@ exports.save = async ({
     let response = await alreadyExists() 
 
     if (response) {
-      console.log('item.precos', item.precos)
+      // console.log('item.precos', item.precos)
       if (item.precos.length) {
-        console.log('item.precos.municipios', item.precos[0].municipios)
-        console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
+        // console.log('item.precos.municipios', item.precos[0].municipios)
+        // console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
         await this._update({
           data: item, local, mongo_data: response
         })
@@ -174,32 +174,6 @@ exports._update = async ({
     console.log('product._update', { data, local, mongo_data })
     let response = data
 
-    const body = {
-      precos: [{
-        estado_id: 1,
-        municipios: [{
-          municipio_id: 11,
-          menor_preco: {
-            preco: '1.1',
-            supermercado_id: {
-              cache_id: 0,
-              _id: '2bsad'
-            }
-          },
-          historico: [{
-            preco: '1.1',
-            supermercado_id: {
-              cache_id: 0,
-              _id: '2bsad'
-            },
-            data: {
-              dia: 1, mes: 11, ano: 1111
-            }
-          }]
-        }]
-      }]
-    }
-
     if (!mongo_data) {
       const { _doc } = await Product.findById(data.api_id)
 
@@ -211,7 +185,7 @@ exports._update = async ({
       const mongo_precos = mongo_data.precos
       const precos = data.precos
 
-      console.log('product._update()', { mongo_precos, precos })
+      // console.log('product._update()', { mongo_precos, precos })
     
       const mongo_state_index = mongo_precos.findIndex(preco => preco.estado_id === local.estado._id)
       const state_index = precos.findIndex(preco => preco.estado_id === local.estado._id)
@@ -227,7 +201,7 @@ exports._update = async ({
           const price = precos[state_index].municipios[region_index]
   
           // (EX) SE ESTA FUNCIONANDO SERTO
-          console.log('historico antes')
+          // console.log('historico antes')
           console.log([...price.historico, ...mongo_price.historico])
           price.historico = [...price.historico, ...mongo_price.historico].sort((a, b) => {
             if (a.data.ano === b.data.ano) {
@@ -251,16 +225,23 @@ exports._update = async ({
             }
           })
 
-          console.log('historico depois')
-          console.log(price.historico)
+          // console.log('historico depois')
+          // console.log(price.historico)
 
           
-          console.log('antes', { mongo_price, price })
+          // console.log('antes', { mongo_price, price })
           
           if (
             (+mongo_price.menor_preco.preco === 0) || 
             (+price.menor_preco.preco < +mongo_price.menor_preco.preco)
           ) {
+            if (+mongo_price.maior_preco.preco === 0) {
+              // @ts-ignore
+              mongo_price.maior_preco.preco = mongo_price.menor_preco.preco
+              // @ts-ignore
+              mongo_price.maior_preco.supermercado_id = mongo_price.menor_preco.supermercado_id
+            }
+
             mongo_price.menor_preco.preco = price.menor_preco.preco
             mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
           } else if (
@@ -279,7 +260,7 @@ exports._update = async ({
 
           mongo_price.historico = price.historico
 
-          console.log('depois', { mongo_price, price })
+          // console.log('depois', { mongo_price, price })
   
           const municipios = mongo_precos[mongo_state_index].municipios
   
@@ -331,7 +312,7 @@ exports._update = async ({
   
       }
 
-      console.log('product._update end', { mongo_precos })
+      // console.log('product._update end', { mongo_precos })
 
       const { _doc } = await Product
         .findByIdAndUpdate(
@@ -606,9 +587,10 @@ exports.single = (req, res) => {
                 return res.status(400).send()
               }
             
-              let historic = []
-              let menor_preco
-              let count = 0
+              let historic = [], 
+                menor_preco, 
+                count = 0,
+                range = {}
   
               const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
           
@@ -625,6 +607,11 @@ exports.single = (req, res) => {
                   const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
                   
                   menor_preco = region.historico[0]
+
+                  range = {
+                    menor_preco: region.menor_preco,
+                    maior_preco: region.maior_preco
+                  }
 
                   const supermarketsMiddleware = historic_paginaed.map(preco => ({
                     async fn() {
@@ -650,7 +637,7 @@ exports.single = (req, res) => {
                 }
               }
               res.status(200).json({ 
-                ok: true, data: historic, menor_preco,
+                ok: true, data: historic, menor_preco, range,
                 limit: limitQuery, count
               })
               break

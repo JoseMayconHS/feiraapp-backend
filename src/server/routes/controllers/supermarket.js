@@ -6,26 +6,25 @@ const Product = require('../../../data/Schemas/Product'),
 exports.save = async ({ data, hash_identify_device = '' }) => {
   try {
     const { 
-      nome, local,  produtos = [], cache_id = 0
+      nome, local,  produtos = [], cache_id = 0, status
     } = data
 
-    console.log('supermarket.save() data', data)
-
+    
     const { estado = {}, municipio = {} } = local
-
+    
     const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
     const { nome: municipio_nome, _id: municipio_id } = municipio
-
+    
     const checkEmpty = {
       nome, municipio_nome, estado_nome, estado_sigla
     }
-
+    
     if (functions.hasEmpty(checkEmpty)) {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
-
+    
     const item = {
-      nome, cache_id, hash_identify_device, produtos,
+      nome, cache_id, hash_identify_device, produtos, status,
       local: {
         estado: {
           cache_id: estado_id,
@@ -39,7 +38,9 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
         }
       },
     }
-
+    
+    // console.log('supermarket.save() item', item)
+    
     const alreadyExists = async () => {
       let response
       try {
@@ -65,7 +66,8 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 
     const response = await alreadyExists()
 
-    console.log('supermarket.response', response)
+    // console.log('supermarket.response', response)
+    // console.log('segundos', new Date().getSeconds())
 
     if (response) {
 
@@ -93,7 +95,7 @@ exports._update = async ({
   data, hash_identify_device = '', mongo_data
 }) => {
   try {
-    console.log('supermarket._update', { data, mongo_data, hash_identify_device })
+    // console.log('supermarket._update', { data, mongo_data, hash_identify_device })
 
     if (!mongo_data) {
       const { _doc } = await Supermarket.findById(data.api_id)
@@ -105,7 +107,7 @@ exports._update = async ({
     // COLA
     const produtos = data.produtos
       .filter((produto) => {
-        console.log('data.produtos.produto', produto)
+        // console.log('data.produtos.produto', produto)
 
         if (mongo_data) {
           const { produto_id: produto_id_request } = produto
@@ -131,7 +133,7 @@ exports._update = async ({
       const products_middleware = produtos.map(product => ({
         async fn() {
           try {
-            console.log('products_middleware.product', product)
+            // console.log('products_middleware.product', product)
 
             // (END) PERSISIR hash_identify_device E cache_id
             // PARA AJUDAR A LOCALIZAR OS ITENS
@@ -170,17 +172,17 @@ exports._update = async ({
 
     await functions.middlewareAsync(...products_middleware)
 
-    console.log('new_products[0]', new_products[0])
+    // console.log('new_products[0]', new_products[0])
 
     const produtos_join = [...new_products, ...mongo_data.produtos]
 
-    console.log('produtos_join', produtos_join)
+    // console.log('produtos_join', produtos_join)
 
     const produtos_clean = produtos_join.filter((product, index) => {
       return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
     })
 
-    console.log('produtos_clean', produtos_clean)
+    // console.log('produtos_clean', produtos_clean)
 
     const { _doc } = await Supermarket
       .findByIdAndUpdate(

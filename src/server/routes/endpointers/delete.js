@@ -14,6 +14,7 @@ route
   .delete('/auth/admin/notificacao/:id', pushNotificationControllers.remove)
   // App
   .delete('/auth/app/observar/:id', watchControllers.remove)
+  .delete('/auth/app/observacoes', watchControllers.removes)
   // .delete('/auth/admin/user/:id', admControllers.removeUser)
 
 module.exports = app => app.use(route)
