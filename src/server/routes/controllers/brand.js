@@ -19,7 +19,7 @@ exports.store = async (req, res) => {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    console.log('brand.store ', req.body)
+    // console.log('brand.store ', req.body)
 
     let response
 
@@ -43,7 +43,7 @@ exports.store = async (req, res) => {
     }
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     res.status(500).send()
   }
 }
@@ -56,7 +56,7 @@ exports.storeList = async (req, res) => {
       data = [], hash_identify_device = ''
     } = req.body
 
-    console.log('brand.storeList ', req.body)
+    // console.log('brand.storeList ', req.body)
 
     const response = []
 
@@ -71,7 +71,7 @@ exports.storeList = async (req, res) => {
             nome_key: functions.keyWord(item.nome)
           })
 
-          console.log('brand.storeList already', already)
+          // console.log('brand.storeList already', already)
 
           if (already) {
             response.push({ ...already._doc, cache_id: item.cache_id })
@@ -92,7 +92,7 @@ exports.storeList = async (req, res) => {
     res.status(201).json({ ok: true, data: response })
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     res.status(500).send()
   }
 }
@@ -213,7 +213,7 @@ exports.indexBy = (req, res) => {
       where.nome_key = { $regex: regex, $options: 'g' }
     }
     
-    console.log({ where, page })
+    // console.log({ where, page })
 
     Brand.countDocuments(where, (err, count) => {
       if (err) {

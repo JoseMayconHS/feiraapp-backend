@@ -1,6 +1,7 @@
 const { Schema, model } = require('mongoose'),
 	remove_accents = require('remove-accents'),
-	{ _default, identify } = require('./rest')
+	{ _default, identify } = require('./rest'),
+	functions = require('../../functions')
 
 const preco_type = {
 	preco: {
@@ -17,6 +18,7 @@ const Product =  new Schema({
 	},
 	nome: {
 		type: String,
+		set: functions.capitalize,
 		required: true
 	},
 	nome_key: {
@@ -37,6 +39,7 @@ const Product =  new Schema({
 		type: {
 			texto: {
 				type: String,
+				set: functions.capitalize,
 				deafult: 'Utilitário'
 			},
 			texto_key: {
@@ -54,6 +57,7 @@ const Product =  new Schema({
 		}, 
 		nome: {
 			type: String,
+			set: functions.capitalize,
 			default: ''
 		},
 		nome_key: {

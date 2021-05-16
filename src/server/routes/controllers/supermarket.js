@@ -39,7 +39,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
       },
     }
     
-    // console.log('supermarket.save() item', item)
+    // // console.log('supermarket.save() item', item)
     
     const alreadyExists = async () => {
       let response
@@ -66,8 +66,8 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 
     const response = await alreadyExists()
 
-    // console.log('supermarket.response', response)
-    // console.log('segundos', new Date().getSeconds())
+    // // console.log('supermarket.response', response)
+    // // console.log('segundos', new Date().getSeconds())
 
     if (response) {
 
@@ -82,7 +82,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
     } else {
       const { _doc } = await Supermarket.create(item)
   
-      return _doc
+      return { ..._doc, cache_id }
     }
 
   } catch(e) {
@@ -95,11 +95,12 @@ exports._update = async ({
   data, hash_identify_device = '', mongo_data
 }) => {
   try {
-    // console.log('supermarket._update', { data, mongo_data, hash_identify_device })
 
+    // console.log('supermarket._update', { data, mongo_data, hash_identify_device })
+    
     if (!mongo_data) {
       const { _doc } = await Supermarket.findById(data.api_id)
-
+      
       mongo_data = _doc
     }
 
@@ -107,7 +108,7 @@ exports._update = async ({
     // COLA
     const produtos = data.produtos
       .filter((produto) => {
-        // console.log('data.produtos.produto', produto)
+        // // console.log('data.produtos.produto', produto)
 
         if (mongo_data) {
           const { produto_id: produto_id_request } = produto
@@ -133,7 +134,7 @@ exports._update = async ({
       const products_middleware = produtos.map(product => ({
         async fn() {
           try {
-            // console.log('products_middleware.product', product)
+            // // console.log('products_middleware.product', product)
 
             // (END) PERSISIR hash_identify_device E cache_id
             // PARA AJUDAR A LOCALIZAR OS ITENS
@@ -172,26 +173,26 @@ exports._update = async ({
 
     await functions.middlewareAsync(...products_middleware)
 
-    // console.log('new_products[0]', new_products[0])
+    console.log('new_products', new_products)
 
     const produtos_join = [...new_products, ...mongo_data.produtos]
 
-    // console.log('produtos_join', produtos_join)
+    console.log('produtos_join', produtos_join)
 
     const produtos_clean = produtos_join.filter((product, index) => {
       return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
     })
 
-    // console.log('produtos_clean', produtos_clean)
+    console.log('produtos_clean', produtos_clean)
 
     const { _doc } = await Supermarket
       .findByIdAndUpdate(
         mongo_data ? mongo_data._id : data.api_id, 
-        { produtos: produtos_clean, hash_identify_device: '', cache_id: 0 }, 
+        { produtos: produtos_join, hash_identify_device: '', cache_id: 0 }, 
         { new: true }
       )
 
-    return _doc
+      return { ..._doc, cache_id: data.cache_id }
   } catch(e) {
     console.error(e)
     return data
@@ -213,7 +214,7 @@ exports.store = async (req, res) => {
     res.status(201).json({ ok: !!data, data })
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     res.status(500).send()
   }
 }
@@ -249,7 +250,7 @@ exports.storeList = async (req, res) => {
     res.status(201).json({ ok: true, data: response })
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     res.status(500).send()
   }
 }
@@ -268,7 +269,7 @@ exports.index = (req, res) => {
       limitQuery = limit
     }
 
-    console.log({ where })
+    // console.log({ where })
 
     if (where) {
       let find = {}
@@ -497,98 +498,6 @@ exports.update = (req, res) => {
             .then(() => res.status(200).send())
             .catch(() => res.status(400).send())
     }
-  } catch(e) {
-    res.status(500).send()
-  }
-}
-
-exports.finishShopping = async (req, res) => {
-  try {
-    const { preco } = req.body
-
-    const { 
-      estado = {}, municipio = {}, 
-      preco: preco_u, supermercado_id, feira_id
-    } = preco
-
-      const { nome: estado_nome } = estado
-      const { nome: municipio_nome } = municipio
-
-      if (functions.hasEmpty({
-        estado_nome, municipio_nome, supermercado_id
-      })) {
-        return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-      }
-
-      Product.findById(_id)
-        .select('precos')
-        .then(product => {
-          const prices = [ ...product.precos ]
-
-          let newPrices = []
-
-          const priceIndex = prices
-            .findIndex(({ estado_id }) => estado_id === estado.id)
-
-          if (priceIndex !== -1) {
-
-            const regionIndex = prices[priceIndex].municipios
-              .findIndex(({ municipio_id }) => municipio_id === municipio.id)
-
-            let municipios = prices[priceIndex].municipios
-
-            let menor_preco = municipios[regionIndex].menor_preco
-            let maior_preco = municipios[regionIndex].maior_preco
-
-            if (+maior_preco.preco < +preco_u) {
-              maior_preco.preco = preco_u
-              maior_preco.supermercado_id = supermercado_id
-              maior_preco.feira_id = feira_id
-            } else if (+menor_preco.preco > +preco_u) {
-              menor_preco.preco = preco_u
-              menor_preco.supermercado_id = supermercado_id
-              menor_preco.feira_id = feira_id
-            }
-            
-            if (regionIndex !== -1) {
-              municipios[regionIndex] = {
-                ...municipios[regionIndex],
-                menor_preco, maior_preco
-              }
-            }
-
-            prices[priceIndex] = {
-              ...prices[priceIndex],
-              municipios
-            }
-
-            newPrices = prices
-          } else {
-            newPices = [ ...prices, {
-              estado_id: estado.id,
-              sigla: estado.sigla,
-              nome: estado.nome,
-              municipios: [{
-                municipio_id: municipio.id,
-                nome: municipio.nome,
-                menor_preco: {
-                  preco: preco_u,
-                  supermercado_id,
-                  feira_id
-                }
-              }]
-            }]
-          }
-
-          console.log({ newPrices })
-
-          res.status(200).send()
-
-        })
-        .catch((e) => {
-          console.error(e)
-          res.status(500).send()
-        })
   } catch(e) {
     res.status(500).send()
   }

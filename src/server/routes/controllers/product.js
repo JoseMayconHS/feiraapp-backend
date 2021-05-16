@@ -19,7 +19,7 @@ exports.save = async ({
       cache_id = 0, precos = [], status
     } = data
 
-    // console.log('product.save ', data)
+    console.log('product.save()', data)
 
     const { tipo: peso_tipo } = peso
 
@@ -87,6 +87,8 @@ exports.save = async ({
       }
     }
 
+    // console.log('product.save ', item)
+
     const alreadyExists = async () => {
       let response
       try {
@@ -110,32 +112,49 @@ exports.save = async ({
           }
 
           const verifyBrand = () => {
-            return String(item.marca_id._id) === String(_doc.marca_id._id)
+            if (item.marca_id) {
+              return String(item.marca_id._id) === String(_doc.marca_id._id)
+            } else {
+              return _doc.sem_marca
+            }
+          }
+
+          const verifyFlavor = () => {
+            if (item.sabor) {
+              if (item.sabor.definido && _doc.sabor.definido) {
+                return functions.keyWord(item.sabor.nome) === _doc.sabor.nome_key
+              } else {
+                return (item.sabor.definido === _doc.sabor.definido)
+              }
+            } else {
+              return !_doc.sabor.definido
+            }
           }
 
           if (item.marca_id) {
-            if (verifyBrand()) {
-              if (verifyWeight()) {
-                if (verifyType()) {
-                  response = _doc
-                }
-              }
+            if (verifyBrand() && verifyWeight() && verifyType() && verifyFlavor()) {
+              response = _doc
             }
           } else {
             if (_doc.sem_marca) {
-              if (verifyType()) {
-                if (verifyWeight()) {
-                  response = _doc
-                }
+              if (verifyType() && verifyWeight() && verifyFlavor()) {
+                response = _doc
               }
             }
           }
 
+          console.log(item.nome, {
+            Brand: verifyBrand(),
+            Type: verifyType(),
+            Flavor: verifyFlavor(),
+            Weight: verifyWeight()
+          }, { already: !!response })
         }
 
       } catch(e) {
         console.error('product.alreadyExists()', e)
       } finally {
+
         return response
       }
     }
@@ -143,10 +162,10 @@ exports.save = async ({
     let response = await alreadyExists() 
 
     if (response) {
-      // console.log('item.precos', item.precos)
+      // // console.log('item.precos', item.precos)
       if (item.precos.length) {
-        // console.log('item.precos.municipios', item.precos[0].municipios)
-        // console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
+        // // console.log('item.precos.municipios', item.precos[0].municipios)
+        // // console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
         await this._update({
           data: item, local, mongo_data: response
         })
@@ -158,11 +177,11 @@ exports.save = async ({
     } else {
       const { _doc } = await Product.create(item)
 
-      return _doc
+      return { ..._doc, cache_id}
     }
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     return
   }
 }
@@ -171,7 +190,8 @@ exports._update = async ({
   data, hash_identify_device = '', local, mongo_data
 }) => {
   try {
-    console.log('product._update', { data, local, mongo_data })
+    // console.log('product._update', { data, local, mongo_data })
+
     let response = data
 
     if (!mongo_data) {
@@ -185,7 +205,7 @@ exports._update = async ({
       const mongo_precos = mongo_data.precos
       const precos = data.precos
 
-      // console.log('product._update()', { mongo_precos, precos })
+      console.log('product._update()', { mongo_precos, precos })
     
       const mongo_state_index = mongo_precos.findIndex(preco => preco.estado_id === local.estado._id)
       const state_index = precos.findIndex(preco => preco.estado_id === local.estado._id)
@@ -198,11 +218,66 @@ exports._update = async ({
   
         if (mongo_region_index !== -1 && region_index !== -1) {
           const mongo_price = mongo_precos[mongo_state_index].municipios[mongo_region_index]
-          const price = precos[state_index].municipios[region_index]
+          let price = precos[state_index].municipios[region_index]
+
+          console.log('price.historico antes', price.historico)
+          price.historico = price.historico.filter(historico => !historico.api)
+          console.log('price.historico depois', price.historico)
   
           // (EX) SE ESTA FUNCIONANDO SERTO
           // console.log('historico antes')
-          console.log([...price.historico, ...mongo_price.historico])
+
+          const _d = new Date()
+    
+          const atualizado = {
+            dia: _d.getDate(), 
+            mes: _d.getMonth() + 1, 
+            ano: _d.getFullYear(), 
+            hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+          }
+      
+          const updatePricesInSupermarkets = price.historico
+            .filter(historico => historico.supermercado_id._id.length)
+            .map(({ preco, supermercado_id }) => ({
+              async fn() {
+                try {
+                  const { _doc } = await Supermarket.findById(supermercado_id._id)
+          
+                  let products = _doc.produtos
+          
+                  console.log('updatePricesInSupermarkets products', products)
+          
+                  const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(mongo_data._id))
+          
+                  if (productIndex !== -1) {
+                    products[productIndex].preco = preco 
+                    products[productIndex].atualizado = atualizado 
+                  } else {
+                    products = [ ...products, {
+                      produto_id: {
+                        _id: mongo_data._id,
+                        cache_id: 0
+                      },
+                      preco, atualizado
+                    }]
+                  }
+          
+                  await Supermarket.findByIdAndUpdate(supermercado_id._id, { produtos: products })
+          
+                  await pushNotificationControllers
+                    .notify({ 
+                      _id: mongo_data ? mongo_data._id : data.api_id, 
+                      preco, local, supermercado_id, moment: atualizado
+                    })
+          
+                } catch(e) {
+                  console.error(e)
+                }
+              }
+            }))
+
+          await functions.middlewareAsync(...updatePricesInSupermarkets)
+
           price.historico = [...price.historico, ...mongo_price.historico].sort((a, b) => {
             if (a.data.ano === b.data.ano) {
               if (a.data.mes === b.data.mes) {
@@ -225,11 +300,13 @@ exports._update = async ({
             }
           })
 
-          // console.log('historico depois')
-          // console.log(price.historico)
+          // // console.log('historico depois')
+          // // console.log(price.historico)
 
           
-          // console.log('antes', { mongo_price, price })
+          // // console.log('antes', { mongo_price, price })
+
+          // (END) ATUALIZAR O PRECO NOS SUPERMERCADOS 
           
           if (
             (+mongo_price.menor_preco.preco === 0) || 
@@ -246,8 +323,7 @@ exports._update = async ({
             mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
           } else if (
             (+mongo_price.maior_preco.preco === 0) || 
-            (+price.maior_preco.preco > +mongo_price.maior_preco.preco) ||
-            (+price.menor_preco.preco > +mongo_price.maior_preco.preco)
+            (+price.maior_preco.preco > +mongo_price.maior_preco.preco)
           ) {
             if (price.maior_preco.supermercado_id) {
               mongo_price.maior_preco.preco = price.maior_preco.preco
@@ -260,7 +336,7 @@ exports._update = async ({
 
           mongo_price.historico = price.historico
 
-          // console.log('depois', { mongo_price, price })
+          // // console.log('depois', { mongo_price, price })
   
           const municipios = mongo_precos[mongo_state_index].municipios
   
@@ -312,7 +388,7 @@ exports._update = async ({
   
       }
 
-      // console.log('product._update end', { mongo_precos })
+      // // console.log('product._update end', { mongo_precos })
 
       const { _doc } = await Product
         .findByIdAndUpdate(
@@ -326,7 +402,7 @@ exports._update = async ({
 
     // (END) ATUALIZAR OS PRECOS
 
-    return response
+    return { ...response, cache_id: data.cache_id }
 
   } catch(e) {
     console.error(e)
@@ -447,7 +523,7 @@ function updatePrices({
           data_update.presenca = product.presenca + 1
         }
         
-        console.log('updatePrices ', data_update.precos)
+        // console.log('updatePrices ', data_update.precos)
 
         Product
           .updateOne({ _id }, data_update)
@@ -475,7 +551,7 @@ exports.store = async (req, res) => {
       hash_identify_device = ''
     } = req.body
 
-    console.log('product.store ', req.body)
+    // console.log('product.store ', req.body)
 
     const data = await save({
       data: req.body, hash_identify_device
@@ -484,7 +560,7 @@ exports.store = async (req, res) => {
     res.status(201).json({ ok: !!data, data })
 
   } catch(err) {
-    console.log(err)
+    // console.log(err)
     res.status(500).send()
   }
 }
@@ -564,9 +640,9 @@ exports.single = (req, res) => {
       limitQuery = limit
     }
 
-    console.log('product.single query', req.query)
-    console.log('product.single params', req.params)
-    console.log('product.single body', req.body)
+    // console.log('product.single query', req.query)
+    // console.log('product.single params', req.params)
+    // console.log('product.single body', req.body)
 
     Product.findById(_id)
       .select(select)
@@ -660,7 +736,7 @@ exports.single = (req, res) => {
 
               const data = getLocale(single.precos)
 
-              console.log('response', data)
+              // console.log('response', data)
 
               res.status(200).json({ ok: !!data, data })
 
@@ -809,7 +885,7 @@ exports.indexBy = async (req, res) => {
     // if (body.ids) {
     //   if (body.ids.length) {
     //     // DEIXANDO SOMENTE ids QUE NAO ESTAO DENTRO DO ARRAY DE body.ids
-    //     console.log('removendo', { selects: where.all_ids, req: body.ids })
+    //     // console.log('removendo', { selects: where.all_ids, req: body.ids })
     //     where.all_ids = where.all_ids.filter(_id => {
     //       const index = body.ids.findIndex(not_id => String(not_id) === String(_id))
   
@@ -912,7 +988,7 @@ exports.indexBy = async (req, res) => {
       ...where.request_ids
     ])]
 
-    console.log({ where, ids })
+    // console.log({ where, ids })
 
     if (body.where.favoritos) {
       ids = ids.filter(_id => where.favorites_ids.some(w_id => String(w_id) === String(_id)))
@@ -938,7 +1014,7 @@ exports.indexBy = async (req, res) => {
       ids = ids.filter(_id => where.supermarket_ids.some(w_id => String(w_id) === String(_id)))
     }
 
-    console.log({ ids })
+    // console.log({ ids })
 
     const clean_search = () => {
       Product.find()
@@ -1003,7 +1079,7 @@ exports.update = (req, res) => {
 
     const { preco } = req.body
 
-    console.log('product.update ', req.body)
+    // console.log('product.update ', req.body)
     if (preco) {
       const { 
         estado = {}, municipio = {}, 
@@ -1019,24 +1095,36 @@ exports.update = (req, res) => {
         return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
       }
 
+      const _d = new Date()
+    
+      const atualizado = {
+        dia: _d.getDate(), 
+        mes: _d.getMonth() + 1, 
+        ano: _d.getFullYear(), 
+        hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+      }
+
       Supermarket
         .findOne({ _id: supermercado_id })
         .select('produtos')
         .then(supermarket => {
 
-          console.log({ supermarket })
+          // console.log({ supermarket })
 
           let products = supermarket.produtos
 
-          console.log('supermarket.produtos ', products)
-          const productIndex = products.findIndex(({ produto_id }) => produto_id === _id)
+          // console.log('supermarket.produtos ', products)
+          const productIndex = products.findIndex(({ produto_id }) => produto_id._id === _id)
 
           if (productIndex !== -1) {
             products[productIndex].preco = preco_u 
           } else {
             products = [ ...products, {
-              produto_id: _id,
-              preco: preco_u
+              produto_id: {
+                _id, cache_id: 0
+              },
+              preco: preco_u,
+              atualizado
             }]
           }
 
@@ -1046,11 +1134,11 @@ exports.update = (req, res) => {
           })
           .then(async () => {
             try {
-              console.log('updatePrices props ', {
-                _id, 
-                local: { estado, municipio }, 
-                supermercado_id, preco_u 
-              })
+              // console.log('updatePrices props ', {
+              //   _id, 
+              //   local: { estado, municipio }, 
+              //   supermercado_id, preco_u 
+              // })
               await updatePrices({
                 _id, local: { estado, municipio }, 
                 supermercado_id, preco_u 
@@ -1091,7 +1179,7 @@ exports.updateMany = async (req, res) => {
       data = [], local, moment, campo, supermercado_id, finished
     } = req.body
 
-    console.log('updateMany', req.body)
+    // console.log('updateMany', req.body)
 
     const updates = data.map(({ produto_id, data }) => ({
       async fn() {
@@ -1116,37 +1204,6 @@ exports.updateMany = async (req, res) => {
 
   } catch(e) {
     console.error(e)
-    res.status(500).send()
-  }
-}
-
-exports.finishShopping = async (req, res) => {
-  try {
-    const { preco } = req.body
-
-    const { 
-      estado = {}, municipio = {}, 
-      preco: preco_u, supermercado_id, feira_id
-    } = preco
-
-    const { nome: estado_nome } = estado
-    const { nome: municipio_nome } = municipio
-
-    if (functions.hasEmpty({
-      estado_nome, municipio_nome, supermercado_id
-    })) {
-      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-    }
-
-    await updatePrices({ 
-      _id, estado, municipio, 
-      supermercado_id, feira_id, preco_u,
-      finished: true
-    })
-
-    res.status(200).json({ ok: true, message: 'Feira finalizada!' })
-      
-  } catch(e) {
     res.status(500).send()
   }
 }

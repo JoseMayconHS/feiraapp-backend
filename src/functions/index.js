@@ -74,6 +74,11 @@ exports.setUndefineds = ({
 
 exports.keyWord = (word) => remove_accents(word).toLowerCase()
 
+exports.capitalize = (val) => {
+  if (typeof val !== 'string') val = ''
+  return val.charAt(0).toUpperCase() + val.substring(1).toLowerCase()
+}
+
 exports.token = _id => {
   return new Promise((resolve, reject) => {
     try {
@@ -216,7 +221,7 @@ exports.authenticate_request = (req, res, next) => {
 
     const decrypted = this.decrypt({ iv, content })
 
-    // console.log('next', decrypted === process.env.AUTHENTICATION_WORD)
+    // // console.log('next', decrypted === process.env.AUTHENTICATION_WORD)
 
     if (decrypted === process.env.AUTHENTICATION_WORD) {
       next()
@@ -224,7 +229,7 @@ exports.authenticate_request = (req, res, next) => {
       res.status(401).send()
     }
   } catch(e) {
-    console.log(e)
+    // console.log(e)
     res.status(500).send()
   }
 }

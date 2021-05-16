@@ -1,10 +1,12 @@
 const { Schema, model } = require('mongoose'),
 	remove_accents = require('remove-accents'),
-	{ locale, _default, identify } = require('./rest')
+	{ locale, _default, identify } = require('./rest'),
+	functions = require('../../functions')
 
 const Supermarket =  new Schema({
 	nome: {
 		type: String,
+		set: functions.capitalize,
 		required: true
 	},
 	nome_key: {

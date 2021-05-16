@@ -54,7 +54,7 @@ exports.store = save => {
         hash_identify_device = ''
       } = req.body
   
-      console.log('_defaults.store', req.body)
+      // console.log('_defaults.store', req.body)
       
       const data = await save({
         data: req.body, hash_identify_device

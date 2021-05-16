@@ -14,7 +14,7 @@ exports.save = async ({
       cache_id = 0
     } = data
 
-    console.log('watch.save', data)
+    // console.log('watch.save', data)
 
     const { estado = {}, municipio = {} } = local
 
@@ -58,7 +58,7 @@ exports._update = async ({
   data, hash_identify_device = ''
 }) => {
   try {
-    console.log('watch._update', data)
+    // console.log('watch._update', data)
 
   } catch(e) {
     console.error(e)
@@ -81,7 +81,7 @@ exports.store = async (req, res) => {
       hash_identify_device = ''
     } = req.body
 
-    console.log('watch.create', req.body)
+    // console.log('watch.create', req.body)
 
     const data = await save({
       data: req.body, hash_identify_device
@@ -112,7 +112,7 @@ exports.index = async (req, res) => {
       .where('local.estado.cache_id', local.estado._id)
       .where('local.municipio.cache_id', local.municipio._id)
       .then(watch => {
-        console.log('watch.index watch', watch)
+        // console.log('watch.index watch', watch)
 
         if (watch) {
           res.status(200).json({ ok: true, data: watch })
@@ -149,8 +149,6 @@ exports.remove = async (req, res) => {
 exports.removes = async (req, res) => {
   try {
     const { ids = [] } = req.headers
-
-    console.log('watch.removes ids', ids)
 
     if (ids.length) {
       await Watch

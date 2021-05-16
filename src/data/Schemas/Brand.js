@@ -6,6 +6,7 @@ const { Schema, model } = require('mongoose'),
 const Brand =  new Schema({
 	nome: {
 		type: String,
+		set: functions.capitalize,
 		required: true
 	},
 	nome_key: {

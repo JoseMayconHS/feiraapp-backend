@@ -45,7 +45,7 @@ exports.cacheToAPI = async (req, res) => {
       //       const products_middleware = produtos.map(product => ({
       //         async fn() {
       //           try {
-      //             console.log('cacheToApi()', { product })
+      //             // console.log('cacheToApi()', { product })
 
       //             if (product.produto_id._id.length) {
       //               new_products.push({
@@ -133,7 +133,7 @@ exports.shopping = async (req, res) => {
       hash_identify_device = ''
     } = req.body
 
-    console.log('user.shopping ', req.body)
+    // console.log('user.shopping ', req.body)
     // {
     //   _id: 1,
     //   finalizado: false,
@@ -222,7 +222,7 @@ exports.shopping = async (req, res) => {
 
     // const { compras: shoppings } = await User.findById(req._id).select('compras')
 
-    console.log('user.shopping - compra', compra)
+    // console.log('user.shopping - compra', compra)
 
     // const { compras } = await User.findByIdAndUpdate(req._id, { compras: [compra, ...shoppings] }, { new: true }).select('compras')
     
