@@ -72,7 +72,7 @@ exports.setUndefineds = ({
   return data
 }
 
-exports.keyWord = (word) => remove_accents(word).toLowerCase()
+exports.keyWord = (word) => remove_accents(word).toLowerCase().trim()
 
 exports.capitalize = (val) => {
   if (typeof val !== 'string') val = ''

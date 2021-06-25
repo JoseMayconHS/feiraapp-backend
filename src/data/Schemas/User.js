@@ -53,7 +53,7 @@ const User = new Schema({
 			nome: String,
 			sigla: String,
 		},
-		municipio: {
+		cidade: {
 			id: Number,
 			nome: String,
 		}

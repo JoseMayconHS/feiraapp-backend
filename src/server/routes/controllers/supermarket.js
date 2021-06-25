@@ -1,5 +1,6 @@
 const Product = require('../../../data/Schemas/Product'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
+  Brand = require('../../../data/Schemas/Brand'),
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
@@ -9,14 +10,13 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
       nome, local,  produtos = [], cache_id = 0, status
     } = data
 
-    
-    const { estado = {}, municipio = {} } = local
+    const { estado = {}, cidade = {} } = local
     
     const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
-    const { nome: municipio_nome, _id: municipio_id } = municipio
+    const { nome: cidade_nome, _id: cidade_id } = cidade
     
     const checkEmpty = {
-      nome, municipio_nome, estado_nome, estado_sigla
+      nome, cidade_nome, estado_nome, estado_sigla
     }
     
     if (functions.hasEmpty(checkEmpty)) {
@@ -31,16 +31,14 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
           nome: estado_nome,
           sigla: estado_sigla
         }, 
-        municipio: {
-          cache_id: municipio_id,
-          nome: municipio_nome,
+        cidade: {
+          cache_id: cidade_id,
+          nome: cidade_nome,
           estado_id
         }
       },
     }
-    
-    // // console.log('supermarket.save() item', item)
-    
+        
     const alreadyExists = async () => {
       let response
       try {
@@ -50,7 +48,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
           const { _doc } = already
 
           if (_doc.local.estado.cache_id === item.local.estado.cache_id) {
-            if (_doc.local.municipio.cache_id === item.local.municipio.cache_id) {
+            if (_doc.local.cidade.cache_id === item.local.cidade.cache_id) {
               response = _doc
             }
           }
@@ -173,17 +171,12 @@ exports._update = async ({
 
     await functions.middlewareAsync(...products_middleware)
 
-    console.log('new_products', new_products)
 
     const produtos_join = [...new_products, ...mongo_data.produtos]
 
-    console.log('produtos_join', produtos_join)
-
-    const produtos_clean = produtos_join.filter((product, index) => {
-      return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
-    })
-
-    console.log('produtos_clean', produtos_clean)
+    // const produtos_clean = produtos_join.filter((product, index) => {
+    //   return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
+    // })
 
     const { _doc } = await Supermarket
       .findByIdAndUpdate(
@@ -285,7 +278,7 @@ exports.index = (req, res) => {
         .where('status', true)
         .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
         .where('local.estado.cache_id', where.local_estado_id)
-        .where('local.municipio.cache_id', where.local_municipio_id)
+        .where('local.cidade.cache_id', where.local_cidade_id)
         .then(Documents => {
           const count = Documents.length
 
@@ -294,7 +287,7 @@ exports.index = (req, res) => {
             .where('status', true)
             .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
             .where('local.estado.cache_id', where.local_estado_id)
-            .where('local.municipio.cache_id', where.local_municipio_id)
+            .where('local.cidade.cache_id', where.local_cidade_id)
             .limit(limitQuery)
             .skip((limitQuery * page) - limitQuery)
             .sort('-created_at')
@@ -373,44 +366,194 @@ exports.all = (_, res) => {
   }
 }
 
-exports.single = (req, res) => {
+exports.single = async (req, res) => {
 
 	try {
     const { id: _id } = req.params
 
     // NO MOMENTO SO PREVEJO (produtos)
     const {
-      select = ''
+      select = '',
+      graphic
     } = req.query
 
     const {
-      undefineds = []
+      undefineds = [],
+      full_products = [],
+      noClassification
     } = req.body
-    
-    Supermarket.findById(_id)
-      .select(select)
-      .then(single => {
-        if (single) {
 
-          single = functions.setUndefineds({
-            data: single, undefineds
-          })
+    if (graphic) {
 
-          if (select !== '') {
-            res.status(200).json({ ok: true, data: single[select] })
-          } else {
-            res.status(200).json({ ok: true, data: single })
-          }
-        } else {
-          res.status(400).send()
+      const single = await Supermarket.findById(_id).select('produtos local')
+
+      if (single) {
+        const { produtos, local } = single
+
+        const fulls = []
+
+        const setFulls = async () => {
+          const stack = produtos
+            .filter(({ produto_id }) => !full_products.some(_id => _id === produto_id._id))
+            .map(({ produto_id }) => ({
+              async fn() {
+                // @ts-ignore
+                const { _doc } = await Product.findOne({ _id: produto_id._id, status: true })
+        
+                if (_doc) {
+  
+                  if (_doc.marca_id._id.length) {
+                    const { _doc: brand } = await Brand.findById(_doc.marca_id._id)
+  
+                    _doc.marca_obj = brand
+                  }
+  
+                  fulls.push(_doc)
+                }
+              }
+            }))
+  
+          await functions.middlewareAsync(...stack)
         }
-      })
-      .catch(e => {
-        console.error(e)
-        res.status(500).send()
-      })
-			
+
+        const classification = {
+          melhores_precos: [],
+          piores_precos: []
+        }
+
+        const setClassifications = async () => {
+          const query = produtos
+            .map(({ produto_id,  }) => produto_id._id)
+            .filter(v => v.length)
+
+          const mongo_produtos = await Product
+            .find()
+            .populate()
+            .where('_id').in(query)
+
+          const stack = mongo_produtos.map(produto => ({
+            async fn() {
+              try {
+                produto = produto._doc
+  
+                const { preco_u, produto_id } = produtos
+                  .find(({ produto_id }) => String(produto_id._id) === String(produto._id)) || {}
+  
+                if (!preco_u || !produto_id) throw new Error(`produto_id ou preco_u estao vazios`)
+
+                const { precos, sem_marca, marca_id } = produto
+  
+                const state_index = precos.findIndex(preco => preco.estado_id === local.estado.cache_id)
+  
+                const response_item = {
+                  nome: produto.nome,
+                  sabor: produto.sabor.nome || '',
+                  peso: produto.peso,
+                  marca: '',
+                  preco_u, 
+                  produto_id
+                }
+  
+                if (state_index !== -1) {
+  
+                  const region_index = precos[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === local.cidade.cache_id)
+  
+                  if (region_index !== -1) {
+                    const price = precos[state_index].cidades[region_index]
+
+                    if (!sem_marca && marca_id._id.length) {
+                      const mongo_marca = await Brand.findById(marca_id._id).select('nome')
+
+                      if (mongo_marca) {
+                        response_item.marca = mongo_marca.nome
+                      }
+                    }
+  
+                    // (END) ANALIZAR SE OS VALORES ESTAO CERTOS
+                    
+                    const my_last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
+                      return (String(single._id) === String(history_supermercado_id._id))
+                    })
+        
+                    const last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
+                      return (String(single._id) !== String(history_supermercado_id._id))
+                    })
+        
+                    if (my_last_price) {
+                      if (last_price) {
+                        if (+last_price.preco_u >= +my_last_price.preco_u) {
+                          // menor preco
+            
+                          classification.melhores_precos.push(response_item)
+                        } else if (+last_price.preco_u < +my_last_price.preco_u) {
+                          // maior preco
+            
+                          classification.piores_precos.push(response_item)
+                        } 
+                      } else {
+                        classification.melhores_precos.push(response_item)
+                      }
+                    }
+  
+                  } else {
+                    // SE NAO TIVER ESSE MUNICIPIO
+  
+                  }
+                } else {
+                  // SE NAO TIVER ESSE ESTADO
+  
+                }
+  
+              } catch(e) {
+                console.error(e)
+              }
+            }
+          }))
+
+          await functions.middlewareAsync(...stack)
+        }
+
+        await setFulls()
+
+        !noClassification && await setClassifications()
+
+        const data = {
+          fulls,
+          field: produtos,
+          classification
+        }
+
+        console.log(data)
+
+        res.status(200).json({ ok: true, data })
+
+      } else {
+        res.status(400).send()
+      }
+
+    } else {
+      let single = await Supermarket.findById(_id)
+        .select(select)
+      
+      if (single) {
+
+        single = functions.setUndefineds({
+          data: single, undefineds
+        })
+
+        if (select !== '') {
+          res.status(200).json({ ok: true, data: single[select] })
+        } else {
+          res.status(200).json({ ok: true, data: single })
+        }
+      } else {
+        res.status(400).send()
+      }
+
+    }
+    		
 	} catch(error) {
+    console.error(error)
 		res.status(500).send()
 	}
 
@@ -456,7 +599,7 @@ exports.update = (req, res) => {
               if (product_in_request) {
                 return {
                   ...product._doc,
-                  preco: product_in_request.preco,
+                  preco_u: product_in_request.preco_u,
                   atualizado
                 }
               } else {
@@ -464,14 +607,14 @@ exports.update = (req, res) => {
               }
             })
     
-            data.produtos.forEach(({ produto_id, preco }) => {
+            data.produtos.forEach(({ produto_id, preco_u }) => {
               const productIndex = products
                 .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
     
               if (productIndex === -1) {
                 products.push({
                   produto_id,
-                  preco,
+                  preco_u,
                   atualizado
                 })
               }

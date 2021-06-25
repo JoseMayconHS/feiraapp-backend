@@ -27,7 +27,7 @@ const Supermarket =  new Schema({
 	produtos: {
 		type: [{
 			produto_id: identify,
-			preco: {
+			preco_u: {
 				type: String,
 				required: true
 			}, 

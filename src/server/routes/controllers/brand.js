@@ -35,7 +35,7 @@ exports.store = async (req, res) => {
           nome, descricao, cache_id, hash_identify_device 
         })
 
-        res.status(201).json({ ok: true, data: response._doc })
+        res.status(201).json({ ok: true, data: { ...response._doc, cache_id } })
       } catch(e) {
         console.error(e)
         res.status(400).send()
@@ -200,26 +200,28 @@ exports.indexBy = (req, res) => {
 
     let {
       limit: limitQuery
-    } = req.query
+    } = where
 
     if (!limitQuery) {
       limitQuery = limit
     }
+
+    const find = {}
     
-    if (where.nome_key) {
+    if (where.nome) {
       // RESOLVER PAGINACAO
-      const regex = new RegExp(`${ where.nome_key }+`)
+      const regex = new RegExp(`${ where.nome }+`)
       
-      where.nome_key = { $regex: regex, $options: 'g' }
+      find.nome_key = { $regex: regex, $options: 'g' }
     }
     
-    // console.log({ where, page })
+    // console.log({ find, page })
 
-    Brand.countDocuments(where, (err, count) => {
+    Brand.countDocuments(find, (err, count) => {
       if (err) {
         res.status(400).send()
       } else {
-        Brand.find(where)
+        Brand.find(find)
           .limit(limitQuery)
           .skip((limitQuery * page) - limitQuery)
           .sort('-created_at')

@@ -4,7 +4,7 @@ const { Schema, model } = require('mongoose'),
 	functions = require('../../functions')
 
 const preco_type = {
-	preco: {
+	preco_u: {
 		type: String,
 		default: '0'
 	},
@@ -86,8 +86,8 @@ const Product =  new Schema({
 	precos: {
 		type: [{
 			estado_id: Number,
-			municipios: [{
-				municipio_id: Number,
+			cidades: [{
+				cidade_id: Number,
 				menor_preco: preco_type,
 				maior_preco: preco_type,
 				historico: {

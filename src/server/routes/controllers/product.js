@@ -19,8 +19,6 @@ exports.save = async ({
       cache_id = 0, precos = [], status
     } = data
 
-    console.log('product.save()', data)
-
     const { tipo: peso_tipo } = peso
 
     const checkEmpty = {
@@ -143,12 +141,12 @@ exports.save = async ({
             }
           }
 
-          console.log(item.nome, {
-            Brand: verifyBrand(),
-            Type: verifyType(),
-            Flavor: verifyFlavor(),
-            Weight: verifyWeight()
-          }, { already: !!response })
+          // console.log(item.nome, {
+          //   Brand: verifyBrand(),
+          //   Type: verifyType(),
+          //   Flavor: verifyFlavor(),
+          //   Weight: verifyWeight()
+          // }, { already: !!response })
         }
 
       } catch(e) {
@@ -164,8 +162,8 @@ exports.save = async ({
     if (response) {
       // // console.log('item.precos', item.precos)
       if (item.precos.length) {
-        // // console.log('item.precos.municipios', item.precos[0].municipios)
-        // // console.log('item.precos.municipios.historico', item.precos[0].municipios[0].historico)
+        // // console.log('item.precos.cidades', item.precos[0].cidades)
+        // // console.log('item.precos.cidades.historico', item.precos[0].cidades[0].historico)
         await this._update({
           data: item, local, mongo_data: response
         })
@@ -213,12 +211,12 @@ exports._update = async ({
       if (mongo_state_index !== -1 && state_index !== -1) {
         const state = mongo_precos[mongo_state_index]
   
-        const mongo_region_index = mongo_precos[mongo_state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
-        const region_index = precos[state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
+        const mongo_region_index = mongo_precos[mongo_state_index].cidades.findIndex(({ cidade_id }) => cidade_id === local.cidade._id)
+        const region_index = precos[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === local.cidade._id)
   
         if (mongo_region_index !== -1 && region_index !== -1) {
-          const mongo_price = mongo_precos[mongo_state_index].municipios[mongo_region_index]
-          let price = precos[state_index].municipios[region_index]
+          const mongo_price = mongo_precos[mongo_state_index].cidades[mongo_region_index]
+          let price = precos[state_index].cidades[region_index]
 
           console.log('price.historico antes', price.historico)
           price.historico = price.historico.filter(historico => !historico.api)
@@ -238,7 +236,7 @@ exports._update = async ({
       
           const updatePricesInSupermarkets = price.historico
             .filter(historico => historico.supermercado_id._id.length)
-            .map(({ preco, supermercado_id }) => ({
+            .map(({ preco_u, supermercado_id }) => ({
               async fn() {
                 try {
                   const { _doc } = await Supermarket.findById(supermercado_id._id)
@@ -250,7 +248,7 @@ exports._update = async ({
                   const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(mongo_data._id))
           
                   if (productIndex !== -1) {
-                    products[productIndex].preco = preco 
+                    products[productIndex].preco_u = preco_u 
                     products[productIndex].atualizado = atualizado 
                   } else {
                     products = [ ...products, {
@@ -258,7 +256,7 @@ exports._update = async ({
                         _id: mongo_data._id,
                         cache_id: 0
                       },
-                      preco, atualizado
+                      preco_u, atualizado
                     }]
                   }
           
@@ -267,7 +265,7 @@ exports._update = async ({
                   await pushNotificationControllers
                     .notify({ 
                       _id: mongo_data ? mongo_data._id : data.api_id, 
-                      preco, local, supermercado_id, moment: atualizado
+                      preco_u, local, supermercado_id, moment: atualizado
                     })
           
                 } catch(e) {
@@ -309,27 +307,27 @@ exports._update = async ({
           // (END) ATUALIZAR O PRECO NOS SUPERMERCADOS 
           
           if (
-            (+mongo_price.menor_preco.preco === 0) || 
-            (+price.menor_preco.preco < +mongo_price.menor_preco.preco)
+            (+mongo_price.menor_preco.preco_u === 0) || 
+            (+price.menor_preco.preco_u < +mongo_price.menor_preco.preco_u)
           ) {
-            if (+mongo_price.maior_preco.preco === 0) {
+            if (+mongo_price.maior_preco.preco_u === 0) {
               // @ts-ignore
-              mongo_price.maior_preco.preco = mongo_price.menor_preco.preco
+              mongo_price.maior_preco.preco_u = mongo_price.menor_preco.preco_u
               // @ts-ignore
               mongo_price.maior_preco.supermercado_id = mongo_price.menor_preco.supermercado_id
             }
 
-            mongo_price.menor_preco.preco = price.menor_preco.preco
+            mongo_price.menor_preco.preco_u = price.menor_preco.preco_u
             mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
           } else if (
-            (+mongo_price.maior_preco.preco === 0) || 
-            (+price.maior_preco.preco > +mongo_price.maior_preco.preco)
+            (+mongo_price.maior_preco.preco_u === 0) || 
+            (+price.maior_preco.preco_u > +mongo_price.maior_preco.preco_u)
           ) {
             if (price.maior_preco.supermercado_id) {
-              mongo_price.maior_preco.preco = price.maior_preco.preco
+              mongo_price.maior_preco.preco_u = price.maior_preco.preco_u
               mongo_price.maior_preco.supermercado_id = price.maior_preco.supermercado_id
             } else {
-              mongo_price.maior_preco.preco = price.menor_preco.preco
+              mongo_price.maior_preco.preco_u = price.menor_preco.preco_u
               mongo_price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
             }
           }
@@ -338,25 +336,25 @@ exports._update = async ({
 
           // // console.log('depois', { mongo_price, price })
   
-          const municipios = mongo_precos[mongo_state_index].municipios
+          const cidades = mongo_precos[mongo_state_index].cidades
   
-          municipios.splice(mongo_region_index, 1, mongo_price)
+          cidades.splice(mongo_region_index, 1, mongo_price)
   
-          mongo_precos[mongo_state_index].municipios = municipios
+          mongo_precos[mongo_state_index].cidades = cidades
         } else {
-          // SE NAO TIVER ESSE MUNICIPIO
+          // SE NAO TIVER ESSE cidade
 
           if (region_index !== -1) {
-            const price = precos[state_index].municipios[region_index]
+            const price = precos[state_index].cidades[region_index]
     
             const _result = {
-              municipio_id: local.municipio._id,
+              cidade_id: local.cidade._id,
               menor_preco: price.menor_preco,
-              maior_preco: price.maior_preco || { preco: '0' },
+              maior_preco: price.maior_preco || { preco_u: '0' },
               historico: price.historico || []
             }
     
-            state.municipios.push(_result)
+            state.cidades.push(_result)
     
             mongo_precos.splice(mongo_state_index, 1, state)
           }
@@ -366,17 +364,17 @@ exports._update = async ({
         // SE NAO TIVER ESSE ESTADO
 
         if (state_index !== -1) {
-          const region_index = precos[state_index].municipios.findIndex(({ municipio_id }) => municipio_id === local.municipio._id)
+          const region_index = precos[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === local.cidade._id)
 
           if (region_index !== -1) {
-            const price = precos[state_index].municipios[region_index]
+            const price = precos[state_index].cidades[region_index]
   
             const _result = {
               estado_id: local.estado._id,
-              municipios: [{
-                municipio_id: local.municipio._id,
+              cidades: [{
+                cidade_id: local.cidade._id,
                 menor_preco: price.menor_preco,
-                maior_preco: price.maior_preco || { preco: '0' },
+                maior_preco: price.maior_preco || { preco_u: '0' },
                 historico: price.historico || []
               }]
             }
@@ -418,7 +416,7 @@ function updatePrices({
     Product.findById(_id)
       .select('precos presenca')
       .then(product => {
-        const { estado, municipio } = local
+        const { estado, cidade } = local
 
         const prices = [ ...product.precos ]
         
@@ -436,7 +434,7 @@ function updatePrices({
 
         const historico = {
           data: moment,
-          preco: preco_u,
+          preco_u,
           supermercado_id
         }
      
@@ -445,53 +443,53 @@ function updatePrices({
         if (state_index !== -1) {
           const state = prices[state_index]
 
-          const region_index = prices[state_index].municipios.findIndex(({ municipio_id }) => municipio_id === municipio._id)
+          const region_index = prices[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === cidade._id)
 
           if (region_index !== -1) {
-            const price = prices[state_index].municipios[region_index]
+            const price = prices[state_index].cidades[region_index]
 
             price.historico = [historico, ...price.historico]
 
-            if ((+price.menor_preco.preco === 0) || (+price.menor_preco.preco > +preco_u)) {
-              if (+price.maior_preco.preco === 0) {
+            if ((+price.menor_preco.preco_u === 0) || (+price.menor_preco.preco_u > +preco_u)) {
+              if (+price.maior_preco.preco_u === 0) {
                 // @ts-ignore
-                price.maior_preco.preco = price.menor_preco.preco
+                price.maior_preco.preco_u = price.menor_preco.preco_u
                 // @ts-ignore
                 price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
               }
 
-              price.menor_preco.preco = preco_u
+              price.menor_preco.preco_u = preco_u
               price.menor_preco.supermercado_id = supermercado_id
 
               // @ts-ignore
-            } else if ((+price.maior_preco.preco === 0) || (+price.maior_preco.preco < +preco_u)) {
+            } else if ((+price.maior_preco.preco_u === 0) || (+price.maior_preco.preco_u < +preco_u)) {
               // @ts-ignore
-              price.maior_preco.preco = preco_u
+              price.maior_preco.preco_u = preco_u
               // @ts-ignore
               price.maior_preco.supermercado_id = supermercado_id
             }
 
-            const municipios = prices[state_index].municipios
+            const cidades = prices[state_index].cidades
 
-            municipios.splice(region_index, 1, price)
+            cidades.splice(region_index, 1, price)
 
-            prices[state_index].municipios = municipios
+            prices[state_index].cidades = cidades
           } else {
-            // SE NAO TIVER ESSE MUNICIPIO
+            // SE NAO TIVER ESSE cidade
 
             const menor_preco = {
-              preco: preco_u,
+              preco_u,
               supermercado_id
             }
 
             const _result = {
-              municipio_id: municipio._id,
+              cidade_id: cidade._id,
               menor_preco,
-              maior_preco: { preco: '0' },
+              maior_preco: { preco_u: '0' },
               historico: [historico]
             }
 
-            state.municipios.push(_result)
+            state.cidades.push(_result)
 
             prices.splice(state_index, 1, state)
           }
@@ -500,10 +498,10 @@ function updatePrices({
 
           const _result = {
             estado_id: estado._id,
-            municipios: [{
-              municipio_id: municipio._id,
+            cidades: [{
+              cidade_id: cidade._id,
               menor_preco: {
-                preco: preco_u,
+                preco_u,
                 supermercado_id
               },
               historico: [historico]
@@ -530,7 +528,7 @@ function updatePrices({
           .then(async () => {
             await pushNotificationControllers
               .notify({ 
-                _id, preco: preco_u, local, supermercado_id, moment
+                _id, preco_u, local, supermercado_id, moment
               })
           })
           .then(resolve)
@@ -654,10 +652,10 @@ exports.single = (req, res) => {
               const prices = single._doc
                 .precos
 
-              const { estado = {}, municipio = {} } = local
+              const { estado = {}, cidade = {} } = local
 
               const { _id: uf } = estado
-              const { _id: mn } = municipio
+              const { _id: mn } = cidade
 
               if (!uf || !mn) {
                 return res.status(400).send()
@@ -673,10 +671,10 @@ exports.single = (req, res) => {
               if (state_index !== -1) {
                 const state = prices[state_index]
           
-                const region_index = state.municipios.findIndex(({ municipio_id }) => municipio_id === mn)
+                const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
           
                 if (region_index !== -1) {
-                  const region = state.municipios[region_index]
+                  const region = state.cidades[region_index]
 
                   count = region.historico.length
 
@@ -702,7 +700,7 @@ exports.single = (req, res) => {
                           api: true,
                           api_id: supermarket._doc._id
                         },
-                        // preco: preco.preco,
+                        // preco_u: preco.preco,
                         // supermercado_id: preco.supermercado_id,
                         // data: preco.data
                       })
@@ -722,7 +720,7 @@ exports.single = (req, res) => {
                 const state = precos.find(({ estado_id }) => estado_id === local.estado._id)
             
                 if (state) {
-                  const region = state.municipios.find(({ municipio_id }) => municipio_id === local.municipio._id)
+                  const region = state.cidades.find(({ cidade_id }) => cidade_id === local.cidade._id)
             
                   if (region) {
           
@@ -828,7 +826,7 @@ exports.indexBy = async (req, res) => {
         .find({ push_token: body.push_token })
         .populate()
         .where('local.estado.cache_id', local.estado.cache_id)
-        .where('local.municipio.cache_id', local.municipio.cache_id)
+        .where('local.cidade.cache_id', local.cidade.cache_id)
       
       if (observer_products) {
         observer_products.forEach(({ produto_id }) => {
@@ -936,7 +934,8 @@ exports.indexBy = async (req, res) => {
       let data = [ ...Documents ]
 
       data = data.map(item => ({
-        ...item._doc
+        ...item._doc, 
+        precos: []
       }))
 
       const brandObjMiddleware = data.map(({ sem_marca, marca_id }, index) => ({
@@ -957,7 +956,7 @@ exports.indexBy = async (req, res) => {
             .where('produto_id._id', _id)
             .populate()
             .where('local.estado.cache_id', local.estado.cache_id)
-            .where('local.municipio.cache_id', local.municipio.cache_id)
+            .where('local.cidade.cache_id', local.cidade.cache_id)
 
           if (watch) {       
             data[index].notificacao = watch
@@ -1082,15 +1081,15 @@ exports.update = (req, res) => {
     // console.log('product.update ', req.body)
     if (preco) {
       const { 
-        estado = {}, municipio = {}, 
-        supermercado_id, preco: preco_u,
+        estado = {}, cidade = {}, 
+        supermercado_id, preco_u,
       } = preco
 
       const { nome: estado_nome } = estado
-      const { nome: municipio_nome } = municipio
+      const { nome: cidade_nome } = cidade
 
       if (functions.hasEmpty({
-        estado_nome, municipio_nome, supermercado_id, _id
+        estado_nome, cidade_nome, supermercado_id, _id
       })) {
         return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
       }
@@ -1117,13 +1116,13 @@ exports.update = (req, res) => {
           const productIndex = products.findIndex(({ produto_id }) => produto_id._id === _id)
 
           if (productIndex !== -1) {
-            products[productIndex].preco = preco_u 
+            products[productIndex].preco_u = preco_u 
           } else {
             products = [ ...products, {
               produto_id: {
                 _id, cache_id: 0
               },
-              preco: preco_u,
+              preco_u,
               atualizado
             }]
           }
@@ -1136,11 +1135,11 @@ exports.update = (req, res) => {
             try {
               // console.log('updatePrices props ', {
               //   _id, 
-              //   local: { estado, municipio }, 
+              //   local: { estado, cidade }, 
               //   supermercado_id, preco_u 
               // })
               await updatePrices({
-                _id, local: { estado, municipio }, 
+                _id, local: { estado, cidade }, 
                 supermercado_id, preco_u 
               })
 

@@ -16,13 +16,13 @@ exports.save = async ({
 
     // console.log('watch.save', data)
 
-    const { estado = {}, municipio = {} } = local
+    const { estado = {}, cidade = {} } = local
 
     const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
-    const { nome: municipio_nome, _id: municipio_id } = municipio
+    const { nome: cidade_nome, _id: cidade_id } = cidade
 
     const checkEmpty = {
-      municipio_nome, estado_nome, estado_sigla, valor, push_token
+      cidade_nome, estado_nome, estado_sigla, valor, push_token
     }
 
     if (functions.hasEmpty(checkEmpty)) {
@@ -38,9 +38,9 @@ exports.save = async ({
           nome: estado_nome,
           sigla: estado_sigla
         }, 
-        municipio: {
-          cache_id: municipio_id,
-          nome: municipio_nome,
+        cidade: {
+          cache_id: cidade_id,
+          nome: cidade_nome,
           estado_id
         }
       }
@@ -110,7 +110,7 @@ exports.index = async (req, res) => {
       .populate()
       .where('produto_id._id', _id)
       .where('local.estado.cache_id', local.estado._id)
-      .where('local.municipio.cache_id', local.municipio._id)
+      .where('local.cidade.cache_id', local.cidade._id)
       .then(watch => {
         // console.log('watch.index watch', watch)
 

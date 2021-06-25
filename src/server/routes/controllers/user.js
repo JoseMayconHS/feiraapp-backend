@@ -106,9 +106,9 @@ exports.cacheToAPI = async (req, res) => {
       // PEGAR PRECOS DOS PRODUTOS E SETAR O supermercado_id._id
 
       // item.precos.estado_id
-      // item.precos.municipios.municipio_id.menor_preco.supermercado_id._id
-      // item.precos.municipios.municipio_id.maior_preco.supermercado_id._id
-      // item.precos.municipios.municipio_id.historico.supermercado_id._id
+      // item.precos.cidades.cidade_id.menor_preco.supermercado_id._id
+      // item.precos.cidades.cidade_id.maior_preco.supermercado_id._id
+      // item.precos.cidades.cidade_id.historico.supermercado_id._id
 
       await Supermarket.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
     }
@@ -201,14 +201,14 @@ exports.shopping = async (req, res) => {
               produto_id: {
                 _id: product._doc._id, ...produto_rest
               },
-              quantidade, preco: preco_u
+              quantidade, preco_u
             })
           } else {
             compra.produtos.push({
               produto_id: {
                 cache_id: produto_id
               },
-              quantidade, preco: preco_u
+              quantidade, preco_u
             })
           }
 

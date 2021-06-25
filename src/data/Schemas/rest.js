@@ -38,7 +38,7 @@ module.exports = {
 			nome: String,
 			sigla: String,
 		},
-		municipio: {
+		cidade: {
 			estado_id: Number,
 			cache_id: Number,
 			nome: String,
