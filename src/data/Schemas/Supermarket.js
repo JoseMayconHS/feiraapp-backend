@@ -24,6 +24,10 @@ const Supermarket =  new Schema({
 		type: Number,
 		deafult: 0
 	},
+	nivel: {
+		type: Number,
+		default: 4
+	},
 	produtos: {
 		type: [{
 			produto_id: identify,

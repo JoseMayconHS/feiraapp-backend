@@ -7,8 +7,10 @@ const Product = require('../../../data/Schemas/Product'),
 exports.save = async ({ data, hash_identify_device = '' }) => {
   try {
     const { 
-      nome, local,  produtos = [], cache_id = 0, status
+      nome, local,  produtos = [], cache_id = 0, status, nivel = 4
     } = data
+
+    console.log('supermarket.save()', data)
 
     const { estado = {}, cidade = {} } = local
     
@@ -24,7 +26,7 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
     }
     
     const item = {
-      nome, cache_id, hash_identify_device, produtos, status,
+      nome, cache_id, hash_identify_device, produtos, status, nivel,
       local: {
         estado: {
           cache_id: estado_id,
@@ -181,7 +183,7 @@ exports._update = async ({
     const { _doc } = await Supermarket
       .findByIdAndUpdate(
         mongo_data ? mongo_data._id : data.api_id, 
-        { produtos: produtos_join, hash_identify_device: '', cache_id: 0 }, 
+        { produtos: produtos_join, nivel: mongo_data.nivel > 2 ? 2 : mongo_data.nivel, hash_identify_device: '', cache_id: 0 }, 
         { new: true }
       )
 
@@ -275,7 +277,7 @@ exports.index = (req, res) => {
 
       Supermarket.find(find)
         .populate()
-        .where('status', true)
+        .where('nivel').in([1, 2])
         .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
         .where('local.estado.cache_id', where.local_estado_id)
         .where('local.cidade.cache_id', where.local_cidade_id)
@@ -284,7 +286,7 @@ exports.index = (req, res) => {
 
           Supermarket.find(find)
             .populate()
-            .where('status', true)
+            .where('nivel').in([1, 2])
             .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
             .where('local.estado.cache_id', where.local_estado_id)
             .where('local.cidade.cache_id', where.local_cidade_id)
@@ -318,6 +320,8 @@ exports.index = (req, res) => {
           res.status(500).send()
         } else {  
           Supermarket.find()
+            .populate()
+            .where('nivel').in([1, 2])
             .limit(limitQuery)
             .skip((limitQuery * page) - limitQuery)
             .sort('-created_at')
@@ -347,17 +351,38 @@ exports.index = (req, res) => {
   }
 }
 
-exports.all = (_, res) => {
+exports.all = (req, res) => {
   // OK
 
-  try {
+  const { status } = req.query
 
-    Product.find()
+  const { locale, noIds = [] } = req.body
+
+  const where = {}
+
+  if (status) {
+    where.status = true
+  }
+
+  if (!locale) {
+    throw new Error('Localização vazia')
+  }
+
+  const { uf, mn } = locale
+
+  try {
+    Supermarket.find(where)
+      .populate()
+      .where('nivel').in([1, 2])
+      .where('local.estado.cache_id', uf)
+      .where('local.cidade.cache_id', mn)
+      .where('_id').nin(noIds)
       .sort('-created_at')
       .then(Documents => {
         res.status(200).json(Documents)
       })
       .catch(_ => {
+        console.error(_)
         res.status(500).send()
       })
 
@@ -385,7 +410,7 @@ exports.single = async (req, res) => {
 
     if (graphic) {
 
-      const single = await Supermarket.findById(_id).select('produtos local')
+      const single = await Supermarket.findById(_id).select('produtos local').where('nivel').in([1, 2])
 
       if (single) {
         const { produtos, local } = single
@@ -559,7 +584,64 @@ exports.single = async (req, res) => {
 
 }
 
-exports.update = (req, res) => {
+exports.updateProducts = async ({ data, _id }) => {
+  const _d = new Date()
+
+  const atualizado = {
+    dia: _d.getDate(), 
+    mes: _d.getMonth() + 1, 
+    ano: _d.getFullYear(), 
+    hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+  }
+
+  let supermarket = await Supermarket
+    .findById(_id)
+    .select('produtos nivel').exec()
+
+  if (supermarket) {
+    supermarket = supermarket._doc
+
+    let products = [ ...supermarket.produtos ]
+  
+    products = products.map(product => {
+      const { produto_id: { _id } } = product
+  
+      const product_in_request = data.produtos.find(({ 
+        produto_id
+      }) => String(produto_id._id) === String(_id))
+  
+      if (product_in_request) {
+        return {
+          ...product._doc,
+          preco_u: product_in_request.preco_u,
+          atualizado
+        }
+      } else {
+        return product
+      }
+    })
+  
+    data.produtos.forEach(({ produto_id, preco_u }) => {
+      const productIndex = products
+        .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
+  
+      if (productIndex === -1) {
+        products.push({
+          produto_id,
+          preco_u,
+          atualizado
+        })
+      }
+    })
+  
+    await Supermarket.findOneAndUpdate({ _id }, {
+      produtos: products, nivel: supermarket.nivel > 2 ? 2 : supermarket.nivel
+    }).exec()
+  }
+
+}
+
+exports.update = async (req, res) => {
   // OK
 
   try {
@@ -573,74 +655,13 @@ exports.update = (req, res) => {
 
     switch (campo) {
       case 'produtos':    
-        const _d = new Date()
-    
-        const atualizado = {
-          dia: _d.getDate(), 
-          mes: _d.getMonth() + 1, 
-          ano: _d.getFullYear(), 
-          hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
-        }
-    
-        Supermarket
-          .findById(_id)
-          .select('produtos')
-          .then(supermarket => {
-    
-            let products = [ ...supermarket.produtos ]
-    
-            products = products.map(product => {
-              const { produto_id: { _id } } = product
-
-              const product_in_request = data.produtos.find(({ 
-                produto_id
-              }) => String(produto_id._id) === String(_id))
-  
-              if (product_in_request) {
-                return {
-                  ...product._doc,
-                  preco_u: product_in_request.preco_u,
-                  atualizado
-                }
-              } else {
-                return product
-              }
-            })
-    
-            data.produtos.forEach(({ produto_id, preco_u }) => {
-              const productIndex = products
-                .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
-    
-              if (productIndex === -1) {
-                products.push({
-                  produto_id,
-                  preco_u,
-                  atualizado
-                })
-              }
-            })
-        
-            Supermarket.findOneAndUpdate({ _id }, {
-              produtos: products
-            })
-            .then(() => {
-              res.status(200).json({ ok: true, message: 'Supermercado atualizado!' })
-            })
-            .catch((e) => {
-              console.error(e)
-              res.status(500).send()  
-            })
-          })
-          .catch(e => {
-            console.error(e) 
-            res.status(500).send()
-          })
+        await this.updateProducts({ _id, data })
         break
       default :
-          Supermarket.findOneAndUpdate({ _id }, req.body)
-            .then(() => res.status(200).send())
-            .catch(() => res.status(400).send())
+        await Supermarket.findOneAndUpdate({ _id }, req.body)
     }
+
+    res.status(200).send()
   } catch(e) {
     res.status(500).send()
   }

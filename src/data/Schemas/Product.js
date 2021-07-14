@@ -27,6 +27,10 @@ const Product =  new Schema({
 			return remove_accents(this.nome).toLowerCase()
 		}
 	},
+	nivel: {
+		type: Number,
+		default: 4
+	},
 	fixado: {
 		type: Boolean,
 		default: false

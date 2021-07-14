@@ -99,7 +99,7 @@ exports.index = async (req, res) => {
     const { id: _id } = req.params
 
     const {
-      local
+      local, push_token
     } = req.body
 
     if (!local) {
@@ -109,6 +109,7 @@ exports.index = async (req, res) => {
     Watch.findOne()
       .populate()
       .where('produto_id._id', _id)
+      .where('push_token', push_token)
       .where('local.estado.cache_id', local.estado._id)
       .where('local.cidade.cache_id', local.cidade._id)
       .then(watch => {

@@ -6,7 +6,8 @@ const bcryptjs = require('bcryptjs'),
   Supermarket = require('../../../data/Schemas/Supermarket'),
   Watch = require('../../../data/Schemas/Watch'),
   functions = require('../../../functions'),
-  generatePassword = require('generate-password'),
+  supermarketControllers = require('./supermarket'),
+  productControllers = require('./product'),
   service_email = require('../../../services/email'),
   limit = +process.env.LIMIT_PAGINATION || 10,
   service_email_token = process.env.SERVICE_EMAIL_TOKEN || ''
@@ -125,7 +126,64 @@ exports.cacheToAPI = async (req, res) => {
   }
 }
 
+exports.finishShopping = async (req, res) => {
+  try {
+    const stepProducts = async () => {
+      try {
+        const props = req.body.products
+    
+        const {
+          data = [], local, moment, campo, supermercado_id, finished
+        } = props
+    
+        // console.log('updateMany', req.body)
+    
+        const updates = data.map(({ produto_id, data }) => ({
+          async fn() {
+            try {
+    
+              if (campo == 'precos') {
+                await productControllers.updatePrices({
+                  _id: produto_id._id,
+                  local, moment, preco_u: data.preco_u, supermercado_id, finished
+                })
+              }
+    
+            } catch(e) {
+              console.error(e)
+            }
+          }
+        }))
+    
+        updates.length && await functions.middlewareAsync(...updates)
+    
+      } catch(e) {
+        console.error(e)
+      }
+    }
+
+    const stepSupermarkets = async () => {
+      try {
+        await supermarketControllers.updateProducts(req.body.supermarkets)
+      } catch(e) {
+        console.error(e)
+      }
+    }
+
+    await stepProducts()
+    await stepSupermarkets()
+
+    res.status(200).send()
+
+  } catch(e) {
+    console.error(e)
+    res.status(500).send()
+  }
+}
+
 exports.shopping = async (req, res) => {
+  // (END) SEM USO
+
   try {
     const { 
       descricao, local, produtos, 

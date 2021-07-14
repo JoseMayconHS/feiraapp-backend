@@ -9,10 +9,6 @@ module.exports = {
       type: String,
       default: ''
     },
-    favorito: {
-      type: Boolean,
-      default: false
-    },
     status: {
       type: Boolean,
       default: true

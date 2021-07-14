@@ -62,6 +62,22 @@ exports.middlewareAsync = (...steps) => {
   })
 }
 
+exports.upLevel = ({ level = 4, compare }) => {
+  if (!compare)
+    return level
+
+  switch (level) {
+    case 4:
+      return compare === 4 ? 3 : 4
+    case 3: 
+      return compare === 3 ? 2 : 3
+    case 2:
+      return compare === 2 ? 1 : 2
+    default:
+      return level
+  }
+}
+
 exports.setUndefineds = ({
   data, undefineds
 }) => {
