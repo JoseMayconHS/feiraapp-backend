@@ -1,19 +1,18 @@
 const route = require('express').Router(),
+	productControllers = require('../controllers/product'),
+	supermarketControllers = require('../controllers/supermarket'),
 	userControllers = require('../controllers/user'),
-	answerControllers = require('../controllers/answer'),
-	questionControllers = require('../controllers/question'),
-	answerTypeControllers = require('../controllers/answer_type'),
 	admControllers = require('../controllers/adm')
 
 route
-	// .put('/app/user/changepassword/:id', userControllers.changepassword)
-	.put('/app/user/forgot', userControllers.generate)
-	// App
-	.put('/auth/user/user', userControllers.update)
+	.put('/auth/app/supermercado/:id', supermarketControllers.update)
+	.put('/auth/app/produto/varios', productControllers.updateMany)
+	.put('/auth/app/produto/:id', productControllers.update)
+	.put('/auth/app/feira/finalizar', userControllers.finishShopping)
 	// Dashboard
-	.put('/auth/admin/answer-type/:id', answerTypeControllers.update)
-	.put('/auth/admin/answer/:id', answerControllers.update)
-	.put('/auth/admin/question/:id', questionControllers.update)
+	.put('/auth/admin/product/:id', productControllers.update)
 	.put('/auth/admin/user/status/:id', admControllers.toggleUserSignUp)
+	// Ambos
+	.put('/auth/admin/product/:id', productControllers.update)
 
 module.exports = app => app.use(route)

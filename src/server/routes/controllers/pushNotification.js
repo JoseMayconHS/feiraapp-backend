@@ -146,3 +146,12 @@ exports.remove = (req, res) => {
   }
 }
 
+exports.notify = async ({ _id, preco, local, supermercado_id, moment }) => {
+  try {
+    // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
+    console.log('notify', { _id, preco, local, supermercado_id, moment })
+  } catch(e) {
+    console.error(e)
+  }
+}
+

@@ -40,51 +40,104 @@ const User = new Schema({
 		default: ''
 	},
 	pro: {
-		type: Boolean,
-		default: false
+		type: Number,
+		default: 0
 	},
 	status: {
 		type: Boolean,
 		default: true
 	},
-	buy_date: {
-		type: String,
-		default: ''
-	},
-	language: {
-		type: String,
-		default: 'pt'
-	},
-	history: [{
-		score: {
-			type: Number,
-			required: true
-		}, 
-		date: {
-			day: {
-				type: Number,
-				required: true
-			},
-			month: {
-				type: Number,
-				required: true
-			},
-			year: {
-				type: Number,
-				required: true
-			},
+	local: {
+		estado: {
+			id: Number,
+			nome: String,
+			sigla: String,
 		},
-		questions: [{
-			question_id: {
-				type: Schema.Types.ObjectId,
-				required: false
+		cidade: {
+			id: Number,
+			nome: String,
+		}
+	},
+	produtos: {
+		type: [{
+			cache_id: {
+				type: Number,
+				default: 0
 			},
-			answer_id: {
-				type: Schema.Types.ObjectId,
-				required: false
+			_id: {
+				type: String,
+				default: ''
 			}
-		}]
-	}]
+		}],
+		default: []
+	},
+	compras: {
+		type: [{
+			supermercado_id: {
+				type: {
+					cache_id: {
+						type: Number,
+						default: 0
+					},
+					_id: {
+						type: String,
+						default: ''
+					}
+				}, 
+				default: {}
+			},
+			descricao: {
+				type: String,
+				default: ''
+			},
+			favorito: {
+				type: Boolean,
+				default: false
+			},
+			data: {
+				type: {
+					ano: {
+						type: Number,
+						required: true
+					},
+					dia: {
+						type: Number,
+						required: true
+					},
+					mes: {
+						type: Number,
+						required: true
+					},
+				}
+			},
+			produtos: {
+				type: [{
+					produto_id: {
+						type: {
+							cache_id: {
+								type: Number,
+								default: 0
+							},
+							_id: {
+								type: String,
+								default: ''
+							}
+						}
+					},
+					quantidade: {
+						type: Number,
+						default: 1,
+					},
+					preco: {
+						type: String,
+						default: '0'
+					}
+				}],
+				default: []
+			} 
+		}],
+		default: []
+	}
 }, {
 	timestamps: { updatedAt: 'updated_at', createdAt: 'created_at' }
 })

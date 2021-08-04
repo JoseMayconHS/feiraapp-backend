@@ -51,7 +51,7 @@ exports.buy = async (req, res) => {
 
       })
       .catch(err => {
-        console.log(err)
+        // console.log(err)
         res.status(200).json({ ok: false, message: err })
       });
 

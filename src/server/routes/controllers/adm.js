@@ -1,8 +1,6 @@
 const bcryptjs = require("bcryptjs"),
   Adm = require("../../../data/Schemas/Adm"),
-  AnswerType = require("../../../data/Schemas/AnswerType"),
-  Answer = require("../../../data/Schemas/Answer"),
-  Question = require("../../../data/Schemas/Question"),
+  Product = require("../../../data/Schemas/Product"),
   User = require("../../../data/Schemas/User"),
   functions = require("../../../functions"),
   limit = +process.env.LIMIT_PAGINATION || 10
@@ -41,28 +39,18 @@ exports.cards = (req, res) => {
   // OK
 
   try {
-    AnswerType.countDocuments((err1, answer_types) => {
-      Question.countDocuments((err2, questions) => {
-        User.countDocuments((err3, users) => {
-          Adm.countDocuments((err4, adms) => {
-            Answer.countDocuments((err5, answers) => {
-              res.status(200).json({
-                ok: true,
-                data: {
-                  answer_types:
-                    typeof +answer_types === "number"
-                      ? +answer_types
-                      : "falhou ❌",
-                  answers: typeof answers === 'number' ? answers : 'falhou ❌',
-                  questions:
-                    typeof +questions === "number" ? +questions : "falhou ❌",
-                  users: typeof +users === "number" ? +users : "falhou ❌",
-                  adms: typeof +adms === "number" ? +adms : "falhou ❌",
-                },
-              });
-            })
+    User.countDocuments((err3, users) => {
+      Adm.countDocuments((err4, adms) => {
+        Product.countDocuments((err5, products) => {
+          res.status(200).json({
+            ok: true,
+            data: {
+              products: typeof products === 'number' ? products : 'falhou ❌',
+              users: typeof +users === "number" ? +users : "falhou ❌",
+              adms: typeof +adms === "number" ? +adms : "falhou ❌",
+            },
           });
-        });
+        })
       });
     });
   } catch (e) {

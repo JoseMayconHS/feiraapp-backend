@@ -23,6 +23,7 @@
     "jsonwebtoken": "8.5.1",
     "mongoose": "5.7.12",
     "pm2": "^4.5.0",
+    "remove-accents": "^0.4.2",
     "stripe": "^8.129.0"
   },
   "devDependencies": {
