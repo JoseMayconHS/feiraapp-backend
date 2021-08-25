@@ -1,13 +1,11 @@
-const Product = require('../../../data/Schemas/Product'),
-  Supermarket = require('../../../data/Schemas/Supermarket'),
-  Brand = require('../../../data/Schemas/Brand'),
+const { ObjectId }= require('mongodb')
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
-exports.save = async ({ data, hash_identify_device = '' }) => {
+exports.save = async ({ data, hash_identify_device = '', db }) => {
   try {
     const { 
-      nome, local,  produtos = [], cache_id = 0, status, nivel = 4
+      nome, local, produtos = [], cache_id = 0, status, nivel = 4
     } = data
 
     console.log('supermarket.save()', data)
@@ -26,7 +24,14 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
     }
     
     const item = {
-      nome, cache_id, hash_identify_device, produtos, status, nivel,
+      nome, cache_id, hash_identify_device, status, nivel,
+      produtos: produtos.map(produto => ({
+        ...produto,
+        produto_id: {
+          ...produto.produto_id,
+          _id: new ObjectId(produto.produto_id._id)
+        }
+      })),
       local: {
         estado: {
           cache_id: estado_id,
@@ -38,20 +43,19 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
           nome: cidade_nome,
           estado_id
         }
-      },
+      }, created_at: Date.now()
     }
         
     const alreadyExists = async () => {
       let response
+
       try {
-        const already = await Supermarket.findOne({ nome_key: functions.keyWord(item.nome) })
+        const already = await db.supermarket.findOne({ nome_key: functions.keyWord(item.nome) })
 
         if (already) {
-          const { _doc } = already
-
-          if (_doc.local.estado.cache_id === item.local.estado.cache_id) {
-            if (_doc.local.cidade.cache_id === item.local.cidade.cache_id) {
-              response = _doc
+          if (already.local.estado.cache_id === item.local.estado.cache_id) {
+            if (already.local.cidade.cache_id === item.local.cidade.cache_id) {
+              response = already
             }
           }
 
@@ -71,18 +75,26 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 
     if (response) {
 
-      const { _doc: new_doc } = await Supermarket.findByIdAndUpdate(response._id, { cache_id, hash_identify_device, descricao: item.descricao }, { new: true })
+      const updateData = { cache_id, hash_identify_device, descricao: item.descricao }
+
+      await db.supermarket.updateOne({
+        _id: response._id
+      }, {
+        $set: updateData
+      })
+
+      const newData = { ...response, ...updateData }
 
       if (item.produtos.length) {
-        await this._update({ hash_identify_device, data: item, mongo_data: new_doc })
+        await this._update({ hash_identify_device, data: item, mongo_data: newData, db })
       }
 
-      return { ...new_doc, cache_id }
+      return newData
 
     } else {
-      const { _doc } = await Supermarket.create(item)
+      const { insertedId } = await db.supermarket.insertOne(item)
   
-      return { ..._doc, cache_id }
+      return { ...item, cache_id, _id: insertedId }
     }
 
   } catch(e) {
@@ -92,16 +104,15 @@ exports.save = async ({ data, hash_identify_device = '' }) => {
 }
 
 exports._update = async ({
-  data, hash_identify_device = '', mongo_data
+  data, hash_identify_device = '', mongo_data, db
 }) => {
   try {
 
     // console.log('supermarket._update', { data, mongo_data, hash_identify_device })
     
     if (!mongo_data) {
-      const { _doc } = await Supermarket.findById(data.api_id)
-      
-      mongo_data = _doc
+
+      mongo_data = await db.supermarket.findOne({ _id: new ObjectId(data.api_id) })
     }
 
     // (END) ATUALIZAR A LISTA DE PRODUTOS
@@ -121,7 +132,7 @@ exports._update = async ({
   
               // || cache_id_request && (cache_id_request === cache_id) 
 
-              return (mongo_id_request.length && mongo_id === mongo_id_request) 
+              return (mongo_id_request.length && String(mongo_id) === String(mongo_id_request)) 
             }) === -1
         } else {
           return false
@@ -144,20 +155,20 @@ exports._update = async ({
                 ...product,
                 produto_id: {
                   cache_id: 0,
-                  _id: product.produto_id._id
+                  _id: new ObjectId(product.produto_id._id)
                 }
               })
             } else {
-              const product_data = await Product
-                .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
-                .select('_id')
+              const product_data = await db.product.findOne({
+                hash_identify_device, cache_id: product.produto_id.cache_id
+              }, { projection: { _id: 1 } })
               
               if (product_data) {
                 new_products.push({
                   ...product,
                   produto_id: {
                     cache_id: 0,
-                    _id: product_data._id
+                    _id: new ObjectId(product_data._id)
                   }
                 })
               } else {
@@ -180,14 +191,19 @@ exports._update = async ({
     //   return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
     // })
 
-    const { _doc } = await Supermarket
-      .findByIdAndUpdate(
-        mongo_data ? mongo_data._id : data.api_id, 
-        { produtos: produtos_join, nivel: mongo_data.nivel > 2 ? 2 : mongo_data.nivel, hash_identify_device: '', cache_id: 0 }, 
-        { new: true }
-      )
+    const updateData = { 
+      produtos: produtos_join, 
+      nivel: mongo_data.nivel > 2 ? 2 : mongo_data.nivel, 
+      hash_identify_device: '', cache_id: 0 
+    }
 
-      return { ..._doc, cache_id: data.cache_id }
+    await db.supermarket.updateOne({
+      _id: mongo_data ? mongo_data._id : new ObjectId(data.api_id)
+    }, {
+      $set: updateData
+    })
+
+    return { ...mongo_data, ...updateData, cache_id: data.cache_id }
   } catch(e) {
     console.error(e)
     return data
@@ -203,7 +219,7 @@ exports.store = async (req, res) => {
     } = req.body
 
     const data = await save({
-      data: req.body, hash_identify_device
+      data: req.body, hash_identify_device, db: req.db
     })
 
     res.status(201).json({ ok: !!data, data })
@@ -229,7 +245,7 @@ exports.storeList = async (req, res) => {
         try {   
 
           const save_response = await save({
-            data: item, hash_identify_device
+            data: item, hash_identify_device, db: req.db
           })
       
           save_response && response.push(save_response)
@@ -251,7 +267,7 @@ exports.storeList = async (req, res) => {
 }
 
 
-exports.index = (req, res) => {
+exports.index = async (req, res) => {
   // OK
 
   try {
@@ -266,92 +282,100 @@ exports.index = (req, res) => {
 
     // console.log({ where })
 
+    let find = {}
+    
     if (where) {
-      let find = {}
-
       if (where.nome) {
-        const regex = new RegExp(where.nome)
+        const regex = new RegExp(functions.keyWord(where.nome))
 
         find.nome_key = { $regex: regex, $options: 'g' }
       }
 
-      Supermarket.find(find)
-        .populate()
-        .where('nivel').in([1, 2])
-        .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
-        .where('local.estado.cache_id', where.local_estado_id)
-        .where('local.cidade.cache_id', where.local_cidade_id)
-        .then(Documents => {
-          const count = Documents.length
-
-          Supermarket.find(find)
-            .populate()
-            .where('nivel').in([1, 2])
-            .where('_id')[where.favorito ? 'in' : 'nin'](where.favoritos_ids || [])
-            .where('local.estado.cache_id', where.local_estado_id)
-            .where('local.cidade.cache_id', where.local_cidade_id)
-            .limit(limitQuery)
-            .skip((limitQuery * page) - limitQuery)
-            .sort('-created_at')
-            .then(Documents => {
-
-              let data = Documents.map(doc => ({
-                ...doc._doc,
-                produtos: []
-              }))
-
-              data = functions.setUndefineds({
-                data, undefineds
-              })
-
-              res.status(200).json({ ok: true, data, count, limit: limitQuery })
-            })
-            .catch(e => {
-              console.error(e)
-              res.status(400).send()
-            })
-        }).catch(e => {
-          console.error(e)
-          res.status(400).send()
-        })
-    } else {
-      Supermarket.countDocuments((err, count) => {
-        if (err) {
-          res.status(500).send()
-        } else {  
-          Supermarket.find()
-            .populate()
-            .where('nivel').in([1, 2])
-            .limit(limitQuery)
-            .skip((limitQuery * page) - limitQuery)
-            .sort('-created_at')
-            .then(Documents => {
-
-              Documents = Documents.map(data => ({
-                ...functions.setUndefineds({
-                  data, undefineds
-                }),
-                produtos: []
-              }))
-
-              res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
-            })
-            .catch(_ => {
-              res.status(500).send()
-            })
-  
+      if (where.favorito) {
+        find._id = {
+          $in: where.favoritos_ids ? where.favoritos_ids.map(_id => new ObjectId(_id)) : []
         }
-      })
+      }
+
+      find['local.estado.cache_id'] = where.local_estado_id
+      find['local.cidade.cache_id'] = where.local_cidade_id
     }
 
+    find.nivel = {
+      $in: [1, 2]
+    }
 
+    const options = [{
+      $match: find
+    }, {
+      $sort: {
+        created_at: -1
+      }
+    }, {
+      $group: {
+        _id: '$_id',
+        doc: { $first: "$$ROOT" }
+      }
+    }, { 
+      $replaceRoot: {
+        newRoot: { $mergeObjects: ['$doc', { produtos: [] }] }
+      }
+    }]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    const optionsCounted = [{
+      $group: {
+        _id: null,
+        count: { $sum: 1 }
+      }
+    }, {
+      $project: {
+        _id: 0,
+        count: 1
+      }
+    }]
+
+    const [{ documents, postsCounted }] = await req.mongo.supermarket.aggregate([{
+      $facet: {
+        documents: [
+          ...options,
+          ...optionsPaginated
+        ],
+        postsCounted: [
+          ...options,
+          ...optionsCounted
+        ]   
+      }
+    }]).toArray()
+    
+    let count = 0
+
+    if (postsCounted.length) {
+      count = postsCounted[0].count
+    }
+
+    let data = documents.map(doc => ({
+      ...doc,
+      produtos: []
+    }))
+
+    data = functions.setUndefineds({
+      data, undefineds
+    })
+
+    res.status(200).json({ ok: true, data, count, limit: limitQuery })
   } catch(err) {
     console.error(err)
     res.status(500).send()
   }
 }
 
-exports.all = (req, res) => {
+exports.all = async (req, res) => {
   // OK
 
   const { status } = req.query
@@ -371,20 +395,27 @@ exports.all = (req, res) => {
   const { uf, mn } = locale
 
   try {
-    Supermarket.find(where)
-      .populate()
-      .where('nivel').in([1, 2])
-      .where('local.estado.cache_id', uf)
-      .where('local.cidade.cache_id', mn)
-      .where('_id').nin(noIds)
-      .sort('-created_at')
-      .then(Documents => {
-        res.status(200).json(Documents)
-      })
-      .catch(_ => {
-        console.error(_)
-        res.status(500).send()
-      })
+
+    const documents = await req.db.supermarket.aggregate([{
+      $match: {
+        ...where,
+        nivel: {
+          $in: [1, 2]
+        },
+        'local.estado.cache_id': uf,
+        'local.cidade.cache_id': mn,
+        _id: {
+          $nin: noIds.map(_id => new ObjectId(_id))
+        }
+      }
+    }, {
+        $sort: {
+          created_at: -1
+        }
+      }
+    ]).toArray()
+
+    res.status(200).json(documents)
 
   } catch(err) {
     res.status(500).send()
@@ -394,7 +425,7 @@ exports.all = (req, res) => {
 exports.single = async (req, res) => {
 
 	try {
-    const { id: _id } = req.params
+    const { id } = req.params
 
     // NO MOMENTO SO PREVEJO (produtos)
     const {
@@ -410,7 +441,16 @@ exports.single = async (req, res) => {
 
     if (graphic) {
 
-      const single = await Supermarket.findById(_id).select('produtos local').where('nivel').in([1, 2])
+      const single = await req.db.supermarket.findOne({
+        _id: new ObjectId(id),
+        nivel: {
+          $in: [1, 2]
+        }
+      }, {
+        projection: {
+          produtos: 1, local: 1
+        }
+      })
 
       if (single) {
         const { produtos, local } = single
@@ -419,21 +459,22 @@ exports.single = async (req, res) => {
 
         const setFulls = async () => {
           const stack = produtos
-            .filter(({ produto_id }) => !full_products.some(_id => _id === produto_id._id))
+            .filter(({ produto_id }) => !full_products.some(_id => String(_id) === String(produto_id._id)))
             .map(({ produto_id }) => ({
               async fn() {
                 // @ts-ignore
-                const { _doc } = await Product.findOne({ _id: produto_id._id, status: true })
+
+                const product = await req.db.product.findOne({ _id: new ObjectId(produto_id._id), status: true })
         
-                if (_doc) {
+                if (product) {
   
-                  if (_doc.marca_id._id.length) {
-                    const { _doc: brand } = await Brand.findById(_doc.marca_id._id)
+                  if (product.marca_id._id.length) {
+                    const brand = await req.db.brand.findOne({ _id: new ObjectId(product.marca._id) })
   
-                    _doc.marca_obj = brand
+                    product.marca_obj = brand
                   }
   
-                  fulls.push(_doc)
+                  fulls.push(product)
                 }
               }
             }))
@@ -450,16 +491,18 @@ exports.single = async (req, res) => {
           const query = produtos
             .map(({ produto_id,  }) => produto_id._id)
             .filter(v => v.length)
+            .map(v => new ObjectId(v))
 
-          const mongo_produtos = await Product
-            .find()
-            .populate()
-            .where('_id').in(query)
+
+          const mongo_produtos = await req.db.product.find({
+            _id: {
+              $in: query
+            }
+          }).toArray()
 
           const stack = mongo_produtos.map(produto => ({
             async fn() {
               try {
-                produto = produto._doc
   
                 const { preco_u, produto_id } = produtos
                   .find(({ produto_id }) => String(produto_id._id) === String(produto._id)) || {}
@@ -557,8 +600,20 @@ exports.single = async (req, res) => {
       }
 
     } else {
-      let single = await Supermarket.findById(_id)
-        .select(select)
+
+      const options = {}
+
+      if (select.length) {
+        options.projection = select.split(' ').reduce((acc, curr) => {
+          acc[curr] = 1
+
+          return acc
+        }, {})
+      }
+
+      let single = await req.db.supermarket.findOne({
+        _id: new ObjectId(id)
+      }, options)
       
       if (single) {
 
@@ -584,7 +639,7 @@ exports.single = async (req, res) => {
 
 }
 
-exports.updateProducts = async ({ data, _id }) => {
+exports.updateProducts = async ({ data, _id, db }) => {
   const _d = new Date()
 
   const atualizado = {
@@ -594,12 +649,15 @@ exports.updateProducts = async ({ data, _id }) => {
     hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
   }
 
-  let supermarket = await Supermarket
-    .findById(_id)
-    .select('produtos nivel').exec()
+  const supermarket = await db.supermarket.findOne({
+    _id: new ObjectId(_id)
+  }, {
+    projection: {
+      produtos: 1, nivel: 1
+    }
+  })
 
   if (supermarket) {
-    supermarket = supermarket._doc
 
     let products = [ ...supermarket.produtos ]
   
@@ -612,7 +670,7 @@ exports.updateProducts = async ({ data, _id }) => {
   
       if (product_in_request) {
         return {
-          ...product._doc,
+          ...product,
           preco_u: product_in_request.preco_u,
           atualizado
         }
@@ -626,17 +684,25 @@ exports.updateProducts = async ({ data, _id }) => {
         .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
   
       if (productIndex === -1) {
-        products.push({
-          produto_id,
+        products.unshift({
+          produto_id: {
+            ...produto_id,
+            _id: new ObjectId(produto_id._id)
+          },
           preco_u,
           atualizado
         })
       }
     })
+
+    await db.supermarket.updateOne({
+      _id: new ObjectId(_id)
+    }, {
+      $set: {
+        produtos: products, nivel: supermarket.nivel > 2 ? 2 : supermarket.nivel
+      }
+    })
   
-    await Supermarket.findOneAndUpdate({ _id }, {
-      produtos: products, nivel: supermarket.nivel > 2 ? 2 : supermarket.nivel
-    }).exec()
   }
 
 }
@@ -646,19 +712,20 @@ exports.update = async (req, res) => {
 
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
     const { data = {}, campo } = req.body
 
-    if (typeof _id !== 'string')
+    if (typeof id !== 'string')
       throw new Error()
 
     switch (campo) {
       case 'produtos':    
-        await this.updateProducts({ _id, data })
+        await this.updateProducts({ _id, data, db: req.db })
         break
       default :
-        await Supermarket.findOneAndUpdate({ _id }, req.body)
+        // (END) SE ATENTAR SE ObjectIds NÃO ESTÃO SENDO SOBRESCRITOS
+        await req.db.supermarket.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
     }
 
     res.status(200).send()
@@ -667,24 +734,21 @@ exports.update = async (req, res) => {
   }
 }
 
-exports.remove = (req, res) => {
+exports.remove = async (req, res) => {
   // OK
 
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    if (typeof _id !== 'string')
+    if (typeof id !== 'string')
       throw new Error()
 
-      Supermarket.findByIdAndDelete(_id)
-        .then(() => {
-          res.status(200).send()
-        })
-        .catch(err => {
-          console.error(err)
-          res.status(400).send()
-        })
+      await req.db.supermarket.deleteOne({
+        _id: new ObjectId(id)
+      })
+
+      res.status(200).send()
 
   } catch(e) {
     res.status(500).send(e)

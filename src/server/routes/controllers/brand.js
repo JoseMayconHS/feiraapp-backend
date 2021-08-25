@@ -1,5 +1,4 @@
-const remove_accents = require('remove-accents'),
-  { ObjectId } = require('mongodb'),
+const { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
@@ -120,7 +119,7 @@ exports.index = async (req, res) => {
     }
 
     if (nome.length) {
-      const name_regex = new RegExp(remove_accents(body.where.nome).toLowerCase())
+      const name_regex = new RegExp(functions.keyWord(body.where.nome))
 
       where.nome_key = { $regex: name_regex, $options: 'g' }
     }
@@ -238,7 +237,7 @@ exports.indexBy = (req, res) => {
     const find = {}
 
     if (where.nome.length) {
-      const name_regex = new RegExp(remove_accents(where.nome).toLowerCase())
+      const name_regex = new RegExp(functions.keyWord(where.nome))
 
       where.nome_key = { $regex: name_regex, $options: 'g' }
     }
@@ -269,7 +268,7 @@ exports.indexBy = (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.mongo.adm.aggregate([{
+    const [{ documents, postsCounted }] = await req.mongo.brand.aggregate([{
       $facet: {
         documents: [
           ...options,
