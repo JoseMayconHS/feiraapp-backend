@@ -1,8 +1,8 @@
-const Watch = require('../../../data/Schemas/Watch'),
+const { ObjectId } = require('mongodb'),
   functions = require('../../../functions')
 
 exports.save = async ({
-  data, hash_identify_device = ''
+  data, hash_identify_device = '', db
 }) => {
   try {
 
@@ -29,8 +29,11 @@ exports.save = async ({
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
 
-    const { _doc } = await Watch.create({
-      push_token, valor, produto_id,
+    const response = {
+      push_token, valor, produto_id: {
+        ...produto_id,
+        _id: new ObjectId(produto_id._id)
+      },
       cache_id, hash_identify_device,
       local: {
         estado: {
@@ -44,9 +47,13 @@ exports.save = async ({
           estado_id
         }
       }
-    })
+    }
 
-    return _doc
+    const { insertedId } = await db.watch.insertOne(response)
+
+    response._id = insertedId
+
+    return response
 
   } catch(e) {
     console.error(e)
@@ -84,7 +91,7 @@ exports.store = async (req, res) => {
     // console.log('watch.create', req.body)
 
     const data = await save({
-      data: req.body, hash_identify_device
+      data: req.body, hash_identify_device, db: req.db
     })
 
     res.status(201).json({ ok: !!data, data })
@@ -96,7 +103,7 @@ exports.store = async (req, res) => {
 exports.index = async (req, res) => {
   try {
     // _id DO PRODUTO
-    const { id: _id } = req.params
+    const { id } = req.params
 
     const {
       local, push_token
@@ -106,24 +113,18 @@ exports.index = async (req, res) => {
       return res.status(400).send()
     }
 
-    Watch.findOne()
-      .populate()
-      .where('produto_id._id', _id)
-      .where('push_token', push_token)
-      .where('local.estado.cache_id', local.estado._id)
-      .where('local.cidade.cache_id', local.cidade._id)
-      .then(watch => {
-        // console.log('watch.index watch', watch)
+    const watch = await req.db.watch.findOne({
+      'produto_id._id': new ObjectId(id),
+      push_token,
+      'local.estado.cache_id': {
+        $in: [local.estado._id, 0]
+      },
+      'local.cidade.cache_id': {
+        $in: [local.cidade._id, 0]
+      }
+    })
 
-        if (watch) {
-          res.status(200).json({ ok: true, data: watch })
-        } else {
-          res.status(200).json({ ok: true })
-        }
-      }).catch(e => {
-        console.error(e)
-        res.status(400).send()
-      })
+    res.status(200).json({ ok: true, data: watch })
 
   } catch(e) {
     res.status(500).send()
@@ -132,15 +133,11 @@ exports.index = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    Watch.findByIdAndDelete(_id)
-      .then(() => {
-        res.status(200).json({ ok: true })
-      }).catch(e => {
-        console.error(e)
-        res.status(400).send()
-      })
+    await req.db.watch.deleteOne({ _id: new ObjectId(id) })
+
+    res.status(200).json({ ok: true })
 
   } catch(e) {
     res.status(500).send()
@@ -149,12 +146,17 @@ exports.remove = async (req, res) => {
 
 exports.removes = async (req, res) => {
   try {
-    const { ids = [] } = req.headers
+    let { ids = [] } = req.headers
+
+    ids = ids.map(id => new ObjectId(id))
 
     if (ids.length) {
-      await Watch
-        .deleteMany()
-        .where('_id').in(ids)
+      await req.db.watch.deleteMany({
+        _id: {
+          $in: ids
+        }
+      })
+      
     }
 
     res.status(200).send()

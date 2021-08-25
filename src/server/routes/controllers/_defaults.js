@@ -20,11 +20,11 @@ exports.storeList = ({
 
             if (item.api_id.length) {
               data = await update({
-                data: item, hash_identify_device, local
+                data: item, hash_identify_device, local, db: req.db
               })
             } else {
               data = await save({
-                data: item, hash_identify_device, local
+                data: item, hash_identify_device, local, db: req.db
               })
             }
 
@@ -57,7 +57,7 @@ exports.store = save => {
       // console.log('_defaults.store', req.body)
       
       const data = await save({
-        data: req.body, hash_identify_device
+        data: req.body, hash_identify_device, db: req.db
       })
   
       res.status(201).json({ ok: !!data, data })
