@@ -21,7 +21,7 @@
     "express": "4.17.1",
     "generate-password": "1.5.0",
     "jsonwebtoken": "8.5.1",
-    "mongoose": "5.7.12",
+    "mongodb": "^4.1.1",
     "pm2": "^4.5.0",
     "remove-accents": "^0.4.2",
     "stripe": "^8.129.0"

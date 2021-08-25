@@ -1,5 +1,5 @@
 const remove_accents = require('remove-accents'),
-  Brand = require('../../../data/Schemas/Brand'),
+  { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
@@ -21,21 +21,22 @@ exports.store = async (req, res) => {
 
     // console.log('brand.store ', req.body)
 
-    let response
-
-    response = await Brand.findOne({
-      nome_key: functions.keyWord(nome)
-    })
-
+    const response = await req.db.brand.findOne({ nome_key: functions.keyWord(nome) })
+    
     if (response) {
-      res.status(201).json({ ok: true, data: { ...response._doc, cache_id } })
+      response.cache_id = cache_id
+
+      res.status(201).json({ ok: true, data: response })
     } else {
       try {
-        response = await Brand.create({ 
-          nome, descricao, cache_id, hash_identify_device 
-        })
 
-        res.status(201).json({ ok: true, data: { ...response._doc, cache_id } })
+        const data = { nome, descricao, cache_id, hash_identify_device, created_at: Date.now() }
+
+        const { insertedId } = await req.db.brand.insertOne(data)
+
+        data._id = insertedId
+
+        res.status(201).json({ ok: true, data })
       } catch(e) {
         console.error(e)
         res.status(400).send()
@@ -67,18 +68,22 @@ exports.storeList = async (req, res) => {
             throw new Error('Existe campos vazios!')
           }
 
-          const already = await Brand.findOne({
-            nome_key: functions.keyWord(item.nome)
-          })
+          const already = await req.db.brand.findOne({ nome_key: functions.keyWord(nome) })
 
           // console.log('brand.storeList already', already)
 
           if (already) {
-            response.push({ ...already._doc, cache_id: item.cache_id })
-          } else {
-            const { _doc } = await Brand.create({ ...item, hash_identify_device })
+            already.cache_id = item.cache_id
 
-            _doc && response.push(_doc)
+            response.push(already)
+          } else {
+            const data = { ...item, hash_identify_device, created_at: Date.now() }
+
+            const { insertedId } = await req.db.brand.insertOne(data)
+
+            data._id = insertedId
+
+            response.push(data)
           }
 
         } catch(e) {
@@ -97,7 +102,7 @@ exports.storeList = async (req, res) => {
   }
 }
 
-exports.index = (req, res) => {
+exports.index = async (req, res) => {
   // OK
 
   try {
@@ -106,41 +111,66 @@ exports.index = (req, res) => {
       nome = ''
     } = req.query
 
-    const countCallback = async (err, count, filter = {}) => {
-      if (err) {
-        res.status(500).send()
-      } else {
-        const { page = 1 } = req.params
+    let { page = 1 } = req.params
 
-        if (!limitQuery) {
-          limitQuery = limit
-        }
+    page = +page
 
-        Brand.find(filter)
-          .limit(limitQuery)
-          .skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery, page })
-          })
-          .catch(_ => {
-            res.status(500).send()
-          })
-
-      }
+    if (!limitQuery) {
+      limitQuery = limit
     }
 
     if (nome.length) {
-      const regex = new RegExp(remove_accents(body.where.nome).toLocaleLowerCase())
+      const name_regex = new RegExp(remove_accents(body.where.nome).toLowerCase())
 
-      Brand.countDocuments({
-        nome_key: { $regex: regex, $options: 'g' }
-      }, (err, count) => countCallback(err, count, {
-        nome_key: { $regex: regex, $options: 'g' }
-      }))
-    } else {
-      Brand.countDocuments(countCallback)
+      where.nome_key = { $regex: name_regex, $options: 'g' }
     }
+
+    const options = [{
+      $match: where
+    }, {
+      $sort: {
+        created_at: -1
+      }
+    }]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    const optionsCounted = [{
+      $group: {
+        _id: null,
+        count: { $sum: 1 }
+      }
+    }, {
+      $project: {
+        _id: 0,
+        count: 1
+      }
+    }]
+
+    const [{ documents, postsCounted }] = await req.mongo.adm.aggregate([{
+      $facet: {
+        documents: [
+          ...options,
+          ...optionsPaginated
+        ],
+        postsCounted: [
+          ...options,
+          ...optionsCounted
+        ]   
+      }
+    }]).toArray()
+    
+    let count = 0
+
+    if (postsCounted.length) {
+      count = postsCounted[0].count
+    }
+
+    res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
 
   } catch(err) {
     console.error(err)
@@ -148,41 +178,38 @@ exports.index = (req, res) => {
   }
 }
 
-exports.all = (_, res) => {
+exports.all = async (_, res) => {
   // OK
 
   try {
 
-    Brand.find()
-      .sort('-created_at')
-      .then(Documents => {
-        res.status(200).json({ ok: true, data: Documents })
-      })
-      .catch(_ => {
-        res.status(500).send()
-      })
+    const documents = await req.db.brand.aggregate([
+      {
+        $sort: {
+          created_at: -1
+        }
+      }
+    ]).toArray()
+
+    res.status(200).json({ ok: true, data: documents })
 
   } catch(err) {
     res.status(500).send()
   }
 }
 
-exports.single = (req, res) => {
+exports.single = async (req, res) => {
 
 	try {
     const { id: _id } = req.params
+
+    const single = await req.db.brand.findOne({ _id: new ObjectId(_id) })
     
-    Brand.findById(_id)
-      .then(single => {
-        if (single) {
-          res.status(200).json({ ok: true, data: single })
-        } else {
-          res.status(400).send()
-        }
-      })
-      .catch(_ => {
-        res.status(500).send()
-      })
+    if (single) {
+      res.status(200).json({ ok: true, data: single })
+    } else {
+      res.status(400).send()
+    }
 			
 	} catch(error) {
 		res.status(500).send()
@@ -198,6 +225,8 @@ exports.indexBy = (req, res) => {
 
     const { page = 1 } = req.params
 
+    page = +page
+
     let {
       limit: limitQuery
     } = where
@@ -207,41 +236,62 @@ exports.indexBy = (req, res) => {
     }
 
     const find = {}
-    
-    if (where.nome) {
-      // RESOLVER PAGINACAO
-      const regex = new RegExp(`${ where.nome }+`)
-      
-      find.nome_key = { $regex: regex, $options: 'g' }
-    }
-    
-    // console.log({ find, page })
 
-    Brand.countDocuments(find, (err, count) => {
-      if (err) {
-        res.status(400).send()
-      } else {
-        Brand.find(find)
-          .limit(limitQuery)
-          .skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(Documents => {
-            const data = where._id ? Documents[0] : Documents
-    
-            res.status(200).json({ 
-              ok: true, 
-              data, 
-              count,
-              page, limit: limitQuery
-            })
-          })
-          .catch(_ => {
-            res.status(500).send()
-          })
+    if (where.nome.length) {
+      const name_regex = new RegExp(remove_accents(where.nome).toLowerCase())
+
+      where.nome_key = { $regex: name_regex, $options: 'g' }
+    }
+
+    const options = [{
+      $match: find
+    }, {
+      $sort: {
+        created_at: -1
       }
-    })
+    }]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    const optionsCounted = [{
+      $group: {
+        _id: null,
+        count: { $sum: 1 }
+      }
+    }, {
+      $project: {
+        _id: 0,
+        count: 1
+      }
+    }]
+
+    const [{ documents, postsCounted }] = await req.mongo.adm.aggregate([{
+      $facet: {
+        documents: [
+          ...options,
+          ...optionsPaginated
+        ],
+        postsCounted: [
+          ...options,
+          ...optionsCounted
+        ]   
+      }
+    }]).toArray()
     
-			
+    let count = 0
+
+    if (postsCounted.length) {
+      count = postsCounted[0].count
+    }
+
+    const data = where._id ? documents[0] : documents
+
+    res.status(200).json({ ok: true, data, limit: limitQuery, count, page })
+
 	} catch(error) {
     console.error(error)
 		res.status(500).send()
@@ -249,42 +299,33 @@ exports.indexBy = (req, res) => {
 
 }
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   // OK
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    Brand.findOneAndUpdate({ _id }, req.body)
-      .then(() => {
-        res.status(200).send()
-      })
-      .catch(err => {
-        console.error(err)
-        res.status(400).send()
-      })
+    await req.mongo.adm.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
+
+    res.status(200).json({ ok: true })
+
   } catch(e) {
     res.status(500).send()
   }
 }
 
-exports.remove = (req, res) => {
+exports.remove = async (req, res) => {
   // OK
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    if (typeof _id !== 'string')
+    if (typeof id !== 'string')
       throw new Error()
 
-    Brand.findByIdAndDelete(_id)
-      .then(() => {
-        res.status(200).send()
-      })
-      .catch(err => {
-        console.error(err)
-        res.status(400).send()
-      })
+    await req.mongo.adm.deleteOne({ _id: new ObjectId(id) })
+
+    res.status(200).send()
 
   } catch(e) {
     res.status(500).send(e)

@@ -5,11 +5,22 @@ const express = require('express'),
   port = process.env.PORT || 3030,
   app = express()
 
-require('../data')
+let db
+
+require('../services/mongodb')()
+  .then(mongo => {
+    db = mongo
+  }).catch(console.error)
 
 app.use(cors())
 app.use(express.json())
 // app.use('/files', express.static(path.resolve(__dirname, '..', 'static')))
+
+app.use('/', (req, res, next) => {
+  req.db = db
+
+  next()
+})
 
 require('./routes')(app)
 
