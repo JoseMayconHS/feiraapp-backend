@@ -455,31 +455,36 @@ exports.single = async (req, res) => {
       if (single) {
         const { produtos, local } = single
 
-        const fulls = []
+        let fulls = []
 
         const setFulls = async () => {
-          const stack = produtos
-            .filter(({ produto_id }) => !full_products.some(_id => String(_id) === String(produto_id._id)))
-            .map(({ produto_id }) => ({
-              async fn() {
-                // @ts-ignore
 
-                const product = await req.db.product.findOne({ _id: new ObjectId(produto_id._id), status: true })
-        
-                if (product) {
-  
-                  if (product.marca_id._id.length) {
-                    const brand = await req.db.brand.findOne({ _id: new ObjectId(product.marca._id) })
-  
-                    product.marca_obj = brand
-                  }
-  
-                  fulls.push(product)
-                }
-              }
-            }))
-  
-          await functions.middlewareAsync(...stack)
+          const _ids = produtos
+            .filter(({ produto_id }) => !full_products.some(_id => String(_id) === String(produto_id._id)))
+            .map(({ produto_id: { _id } }) => new ObjectId(_id))
+
+          const documents = await req.db.product.aggregate([{
+            $match: {
+              _id: {
+                $in: _ids
+              },
+              nivel: {
+                $in: [1, 2]
+              },
+              // status: true
+            }
+          }, {
+            $lookup: {
+              from: 'brand',
+              localField: 'marca_id._id',
+              foreignField: '_id',
+              as: 'marca_obj'
+            }
+          }, {
+            $unwind: '$marca_obj'
+          }]).toArray()
+
+          fulls = documents
         }
 
         const classification = {
@@ -530,7 +535,7 @@ exports.single = async (req, res) => {
                     const price = precos[state_index].cidades[region_index]
 
                     if (!sem_marca && marca_id._id.length) {
-                      const mongo_marca = await Brand.findById(marca_id._id).select('nome')
+                      const mongo_marca = await req.db.brand.findOne({ _id: new ObjectId(marca_id._id) }, { projection: { nome: 1 } })
 
                       if (mongo_marca) {
                         response_item.marca = mongo_marca.nome
@@ -744,11 +749,11 @@ exports.remove = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
-      await req.db.supermarket.deleteOne({
-        _id: new ObjectId(id)
-      })
+    await req.db.supermarket.deleteOne({
+      _id: new ObjectId(id)
+    })
 
-      res.status(200).send()
+    res.status(200).send()
 
   } catch(e) {
     res.status(500).send(e)
