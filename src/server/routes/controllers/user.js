@@ -1,16 +1,6 @@
-const bcryptjs = require('bcryptjs'),
-  { Types } = require('mongoose'),
-  remove_accents = require('remove-accents'),
-  Product = require('../../../data/Schemas/Product'),
-  Brand = require('../../../data/Schemas/Brand'),
-  Supermarket = require('../../../data/Schemas/Supermarket'),
-  Watch = require('../../../data/Schemas/Watch'),
-  functions = require('../../../functions'),
+const functions = require('../../../functions'),
   supermarketControllers = require('./supermarket'),
-  productControllers = require('./product'),
-  service_email = require('../../../services/email'),
-  limit = +process.env.LIMIT_PAGINATION || 10,
-  service_email_token = process.env.SERVICE_EMAIL_TOKEN || ''
+  productControllers = require('./product')
 
 exports.cacheToAPI = async (req, res) => {
   try {
@@ -34,64 +24,12 @@ exports.cacheToAPI = async (req, res) => {
       // - ADICIONAR O PRODUTOS E VALORES NOS SUPERMERCADOS
       // - VERIFICAR SE DEVO NOTIFICAR ALGUEM
 
-      // const supermarkets = await Supermarket
-      //   .find({ hash_identify_device })
-      //   .select('produtos _id')
+      await req.db.product.updateMany({ hash_identify_device }, {
+        $set: {
+          hash_identify_device: '', cache_id: 0
+        }
+      })
 
-      // const supermarkets_middleware = supermarkets.map(({ produtos = [], _id }) => ({
-      //   async fn() {
-      //     try {
-      //       const new_products = []
-  
-      //       const products_middleware = produtos.map(product => ({
-      //         async fn() {
-      //           try {
-      //             // console.log('cacheToApi()', { product })
-
-      //             if (product.produto_id._id.length) {
-      //               new_products.push({
-      //                 ...product._doc,
-      //                 produto_id: {
-      //                   cache_id: 0,
-      //                   _id: product.produto_id._id
-      //                 }
-      //               })
-      //             } else {
-      //               const product_data = await Product
-      //                 .findOne({ hash_identify_device, cache_id: product.produto_id.cache_id })
-      //                 .select('_id')
-                      
-      //                 if (product_data) {
-      //                   new_products.push({
-      //                     ...product._doc,
-      //                     produto_id: {
-      //                       cache_id: 0,
-      //                       _id: product_data._id
-      //                     }
-      //                   })
-      //                 } else {
-      //                   new_products.push(product._doc)
-      //                 }
-      //             }
-                  
-      //           } catch(e) {
-      //             console.error(e)
-      //           }
-      //         }
-      //       }))
-  
-      //       await functions.middlewareAsync(...products_middleware)
-    
-      //       await Supermarket.findByIdAndUpdate(_id, { produtos: new_products, hash_identify_device: '', cache_id: 0 })
-      //     } catch(e) {
-      //       console.error(e)
-      //     }
-      //   }
-      // }))
-
-      // await functions.middlewareAsync(...supermarkets_middleware)
-
-      await Product.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
     }
     
     if (marca) {
@@ -99,7 +37,11 @@ exports.cacheToAPI = async (req, res) => {
       // BUSCAR PRODUTOS NO CACHE E SETAR NO _id NO marca_id._id DELES
 
 
-      await Brand.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
+      await req.db.brand.updateMany({ hash_identify_device }, {
+        $set: {
+          hash_identify_device: '', cache_id: 0
+        }
+      })
     }
 
     if (supermercado) {
@@ -111,11 +53,19 @@ exports.cacheToAPI = async (req, res) => {
       // item.precos.cidades.cidade_id.maior_preco.supermercado_id._id
       // item.precos.cidades.cidade_id.historico.supermercado_id._id
 
-      await Supermarket.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
+      await req.db.supermarket.updateMany({ hash_identify_device }, {
+        $set: {
+          hash_identify_device: '', cache_id: 0
+        }
+      })
     }
 
     if (notificacao) {
-      await Watch.updateMany({ hash_identify_device }, { hash_identify_device: '', cache_id: 0 })
+      await req.db.watch.updateMany({ hash_identify_device }, {
+        $set: {
+          hash_identify_device: '', cache_id: 0
+        }
+      })
     }
 
     res.status(200).json({ ok: true })
@@ -174,117 +124,6 @@ exports.finishShopping = async (req, res) => {
     await stepSupermarkets()
 
     res.status(200).send()
-
-  } catch(e) {
-    console.error(e)
-    res.status(500).send()
-  }
-}
-
-exports.shopping = async (req, res) => {
-  // (END) SEM USO
-
-  try {
-    const { 
-      descricao, local, produtos, 
-      supermercado_id, favorito, data, 
-      hash_identify_device = ''
-    } = req.body
-
-    // console.log('user.shopping ', req.body)
-    // {
-    //   _id: 1,
-    //   finalizado: false,
-    //   descricao: '',
-    //   supermercado_id: { cache_id: 3, _id: '6078740082845f0928edf233', status: true },
-    //   favorito: false,
-    //   valor: '25.5',
-    //   api: false,
-    //   api_id: '',
-    //   data: { dia: 15, mes: 4, ano: 2021, status: true },
-    //   status: true,
-    //   produtos: [
-    //     {
-    //       _id: 1,
-    //       nome: 'Sorvete',
-    //       meu: true,
-    //       tipo: [Object],
-    //       favorito: false,
-    //       presenca: 0,
-    //       sabor: [Object],
-    //       peso: [Object],
-    //       marca_id: [Object],
-    //       sem_marca: false,
-    //       api: true,
-    //       api_id: '607871d482845f0928edf22f',
-    //       nome_key: 'sorvete',
-    //       status: true,
-    //       marca_obj: [Object],
-    //       preco_u: '8.5',
-    //       quantidade: 3
-    //     }
-    //   ],
-    //   hash_identify_device: '0d364761ffce22681f453850062f984d4481edd75b48d045d2c7edf6238943b0'
-    // }
-    
-    let supermarket = {}
-    
-    if (supermercado_id._id.length) {
-      supermarket = await Supermarket.findById(supermercado_id._id)
-    }
-
-    const compra = {
-      descricao, local, favorito, data, produtos: [], supermercado_id: {}
-    }
-
-    if (supermarket && supermarket._doc) {
-      compra.supermercado_id._id = supermarket._doc._id
-    } else {
-      compra.supermercado_id.cache_id = supermercado_id.cache_id
-    }
-
-    const productsMiddleware = produtos.map(({ api_id, quantidade, preco_u }) => ({
-      async fn() {
-        try {
-          let product = await Product.findById(api_id)
-
-          if (product) {
-            const produto_rest = {}
-
-            if (typeof produto_id === 'number') {
-              produto_rest.cache_id = produto_id
-            }
-
-            compra.produtos.push({
-              produto_id: {
-                _id: product._doc._id, ...produto_rest
-              },
-              quantidade, preco_u
-            })
-          } else {
-            compra.produtos.push({
-              produto_id: {
-                cache_id: produto_id
-              },
-              quantidade, preco_u
-            })
-          }
-
-        } catch(e) {
-          console.error(e)
-        }
-      }
-    }))
-
-    await functions.middlewareAsync(...productsMiddleware) 
-
-    // const { compras: shoppings } = await User.findById(req._id).select('compras')
-
-    // console.log('user.shopping - compra', compra)
-
-    // const { compras } = await User.findByIdAndUpdate(req._id, { compras: [compra, ...shoppings] }, { new: true }).select('compras')
-    
-    res.status(200).json({ ok: true, data: '_id provisorio' })
 
   } catch(e) {
     console.error(e)
