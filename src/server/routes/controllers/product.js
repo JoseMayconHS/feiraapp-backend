@@ -9,7 +9,7 @@ exports.save = async ({
   try {
 
     const { 
-      peso = {}, nome, sabor, tipo = {}, sem_marca,
+      peso = {}, nome, sabor, tipo, sem_marca,
       marca: marca_obj,
       marca_id: marca = {},
       cache_id = 0, precos = [], status, nivel = 4
@@ -18,8 +18,6 @@ exports.save = async ({
     console.log('product.save()', data)
 
     const { tipo: peso_tipo } = peso
-
-    tipo.texto_key = functions.keyWord(tipo.texto)
 
     const checkEmpty = {
       nome, tipo, peso_tipo
@@ -32,6 +30,9 @@ exports.save = async ({
     if (functions.hasEmpty(checkEmpty)) {
       return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
     }
+
+    tipo.texto = functions.capitalize(tipo.texto)
+    tipo.texto_key = functions.keyWord(tipo.texto)
 
     let criar = !sem_marca
     
@@ -77,11 +78,15 @@ exports.save = async ({
 
     const item = {
       nome, nome_key: functions.keyWord(nome), 
-      tipo, peso, sem_marca, cache_id, hash_identify_device, precos, status, nivel,
+      sem_marca, cache_id, hash_identify_device, precos, status, nivel, peso,
+      tipo,
       created_at: Date.now()
     }
 
     if (sabor.definido) {
+      sabor.nome = functions.capitalize(sabor.nome)
+      sabor.nome_key = functions.keyWord(sabor.nome)
+
       item.sabor = sabor
     }
 
@@ -238,15 +243,8 @@ exports._update = async ({
   
           // (EX) SE ESTA FUNCIONANDO CERTO
           // console.log('historico antes')
-
-          const _d = new Date()
     
-          const atualizado = {
-            dia: _d.getDate(), 
-            mes: _d.getMonth() + 1, 
-            ano: _d.getFullYear(), 
-            hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
-          }
+          const atualizado = functions.date() 
       
           const updatePricesInSupermarkets = price.historico
             .filter(historico => historico.supermercado_id._id.length)
@@ -286,6 +284,8 @@ exports._update = async ({
                     .notify({ 
                       _id: mongo_data ? mongo_data._id : data.api_id, 
                       produto_nome: mongo_data ? mongo_data.nome : data.nome,
+                      produto_peso: mongo_data ? mongo_data.peso : data.peso,
+                      produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
                       preco_u, local, 
                       supermercado_id, supermercado_nome: supermarket.nome,
                       moment: atualizado, db
@@ -478,7 +478,7 @@ exports.updatePrices = async ({
   return new Promise((resolve, reject) => {
     const produto = await db.product.findOne({
       _id: new ObjectId(_id)
-    }, { precos: 1, nivel: 1, nome: 1 })
+    }, { precos: 1, nivel: 1, nome: 1, peso: 1, sabor: 1 })
 
     if (produto) {
         const { estado, cidade } = local
@@ -490,11 +490,7 @@ exports.updatePrices = async ({
         if (!moment) {
           const _d = new Date()
     
-          moment = {
-            dia: _d.getDate(),
-            mes: _d.getMonth() + 1,
-            ano: _d.getFullYear()
-          }
+          moment = functions.date()
         }
 
         const historico = {
@@ -635,7 +631,10 @@ exports.updatePrices = async ({
         await pushNotificationControllers
           .notify({ 
             _id, preco_u, local, supermercado_id, moment, db,
-            supermercado_nome, produto_nome: produto.nome
+            supermercado_nome, 
+            produto_nome: produto.nome,
+            produto_peso: produto.peso,
+            produto_sabor: produto.sabor
           })
 
         resolve('')
@@ -1457,15 +1456,8 @@ exports.update = async (req, res) => {
       })) {
         return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
       }
-
-      const _d = new Date()
     
-      const atualizado = {
-        dia: _d.getDate(), 
-        mes: _d.getMonth() + 1, 
-        ano: _d.getFullYear(), 
-        hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
-      }
+      const atualizado = functions.date()
 
       const supermarket = await req.db.supermarket.findOne({
         _id: new ObjectId(supermercado_id)
@@ -1505,7 +1497,7 @@ exports.update = async (req, res) => {
         await this.updatePrices({
           _id: id, local: { estado, cidade }, 
           supermercado_id, preco_u, db: req.db,
-          supermercado_nome: supermarket.nome
+          supermercado_nome: supermarket.nome, moment: atualizado
         })
 
         res.status(200).json({ ok: true, message: 'Dados atualizados!' })

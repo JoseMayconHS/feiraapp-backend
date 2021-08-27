@@ -30,7 +30,7 @@ exports.save = async ({
     }
 
     const response = {
-      push_token, valor, produto_id: {
+      push_token, valor: +valor, produto_id: {
         ...produto_id,
         _id: new ObjectId(produto_id._id)
       },
@@ -46,7 +46,8 @@ exports.save = async ({
           nome: cidade_nome,
           estado_id
         }
-      }
+      },
+      created_at: Date.now()
     }
 
     const { insertedId } = await db.watch.insertOne(response)

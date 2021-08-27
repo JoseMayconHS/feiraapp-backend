@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs'),
   remove_accents = require('remove-accents'),
+  numberFormatter = require('currency-formatter'),
   crypto = require('crypto'),
   algorithm = 'aes-256-ctr',
   iv = crypto.randomBytes(16)
@@ -93,6 +94,57 @@ exports.stringToObj = v => v.split(' ').reduce((acc, curr) => {
 
   return acc
 }, {})
+
+exports.date = () => {
+  const _d = new Date()
+    
+  return {
+    dia: _d.getDate(), 
+    mes: _d.getMonth() + 1, 
+    ano: _d.getFullYear(), 
+    hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+  }
+}
+
+exports.formart = (v) => {
+  return numberFormatter.format(v, {
+    symbol: '',
+    decimal: ',',
+    thousand: '.',
+    precision: 2
+  })
+}
+
+exports.getWeight = (peso) => {
+  const valor = Number(peso.valor)
+
+  switch(peso.tipo) {
+    case 'liquido':
+      if (valor < 100) {
+        return `${ valor }L`
+      } else {
+        return `${ this.formart(valor) }ml`
+      }
+    case 'massa':
+      if (valor < (peso.force_down ? 6 : 100)) {
+        return `${ this.formart(valor) }kg`
+      } else {
+        return `${ this.formart(valor) }g`
+      }
+    case 'metro':
+      if (valor < 100) {
+        return `${ this.formart(valor) }m`
+      } else {
+        return `${ this.formart(valor) }cm`
+      }
+    case 'unidade':
+      return `1 unidade`
+    case 'pacote': 
+      return `${ peso.valor } un.`
+    default: 
+      return ''
+  }
+}
 
 exports.keyWord = (word) => remove_accents(word).toLowerCase().trim()
 
