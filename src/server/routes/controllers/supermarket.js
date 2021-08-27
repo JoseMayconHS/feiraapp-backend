@@ -340,7 +340,7 @@ exports.index = async (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.mongo.supermarket.aggregate([{
+    const [{ documents, postsCounted }] = await req.db.supermarket.aggregate([{
       $facet: {
         documents: [
           ...options,
@@ -377,6 +377,7 @@ exports.index = async (req, res) => {
 
 exports.all = async (req, res) => {
   // OK
+  // (DESC) BUSCAR PARA DOWNLOAD AUTOMATICO SOMENTE PRODUTOS APROVADOS PELO GESTOR
 
   const { status } = req.query
 
@@ -609,11 +610,7 @@ exports.single = async (req, res) => {
       const options = {}
 
       if (select.length) {
-        options.projection = select.split(' ').reduce((acc, curr) => {
-          acc[curr] = 1
-
-          return acc
-        }, {})
+        options.projection = functions.stringToObj(select)
       }
 
       let single = await req.db.supermarket.findOne({

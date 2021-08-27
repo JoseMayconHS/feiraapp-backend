@@ -1,19 +1,15 @@
-const remove_accents = require('remove-accents'),
-  Product = require('../../../data/Schemas/Product'),
-  Watch = require('../../../data/Schemas/Watch'),
-  Brand = require('../../../data/Schemas/Brand'),
-  Supermarket = require('../../../data/Schemas/Supermarket'),
+const { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
   pushNotificationControllers = require('./pushNotification'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.save = async ({ 
-    data, hash_identify_device = '', local
+    data, hash_identify_device = '', local, db
   }) => {
   try {
 
     const { 
-      peso = {}, nome, sabor, tipo, sem_marca,
+      peso = {}, nome, sabor, tipo = {}, sem_marca,
       marca: marca_obj,
       marca_id: marca = {},
       cache_id = 0, precos = [], status, nivel = 4
@@ -22,6 +18,8 @@ exports.save = async ({
     console.log('product.save()', data)
 
     const { tipo: peso_tipo } = peso
+
+    tipo.texto_key = functions.keyWord(tipo.texto)
 
     const checkEmpty = {
       nome, tipo, peso_tipo
@@ -47,7 +45,7 @@ exports.save = async ({
 
       if (marca_id && marca_id.length) {
   
-        brand = await Brand.findById(marca_id)
+        brand = await db.brand.findOne({ _id: new ObjectId(marca_id)}, { projection: { _id: 1 } })
     
         if (brand) {
           criar = false
@@ -56,14 +54,19 @@ exports.save = async ({
   
       if (criar) {
         if (marca_obj) {
-          data_marca = await Brand.findOne({
+          data_marca = await db.brand.findOne({
             nome_key: functions.keyWord(marca_obj.nome)
-          })
+          }, { projection: { nome: 1 } })
 
           if (!data_marca) {
-            data_marca = await Brand.create({
-              nome: marca_obj.nome
+            const { insertedId } = await db.brand.insetOne({
+              nome: marca_obj.nome,
+              nome_key: functions.keyWord(marca_obj.nome)
             })
+
+            data_marca = {
+              _id: insertedId
+            }
           }
 
         }
@@ -73,18 +76,25 @@ exports.save = async ({
     }
 
     const item = {
-      nome, tipo, peso, sem_marca, cache_id, hash_identify_device, precos, status, nivel
+      nome, nome_key: functions.keyWord(nome), 
+      tipo, peso, sem_marca, cache_id, hash_identify_device, precos, status, nivel,
+      created_at: Date.now()
     }
 
     if (sabor.definido) {
       item.sabor = sabor
     }
 
-    if (!sem_marca) {
-      item.marca_id = {
-        _id: data_marca ? data_marca._doc._id : '',
-        cache_id: 0
-      }
+    // if (!sem_marca) {
+    //   item.marca_id = {
+    //     _id: new ObjectId(data_marca ? data_marca._id : ''),
+    //     cache_id: 0
+    //   }
+    // }
+
+    item.marca_id = {
+      _id: new ObjectId(data_marca ? data_marca._id : ''),
+      cache_id: 0
     }
 
     // console.log('product.save ', item)
@@ -92,18 +102,17 @@ exports.save = async ({
     const alreadyExists = async () => {
       let response
       try {
-        const already = await Product.findOne({ nome_key: functions.keyWord(item.nome) })
+        const already = await db.product.findOne({ nome_key: item.nome_key })
 
         if (already) {
-          const { _doc } = already
 
           const verifyType = () => {
-            return (functions.keyWord(item.tipo.texto) === _doc.tipo.texto_key)
+            return (item.tipo.texto_key === already.tipo.texto_key)
           }
 
           const verifyWeight = () => {
-            if (item.peso.tipo === _doc.peso.tipo) {
-              if (item.peso.valor === _doc.peso.valor && item.peso.force_down === _doc.peso.force_down) {
+            if (item.peso.tipo === already.peso.tipo) {
+              if (item.peso.valor === already.peso.valor && item.peso.force_down === already.peso.force_down) {
                 return true
               }
             }
@@ -112,33 +121,33 @@ exports.save = async ({
           }
 
           const verifyBrand = () => {
-            if (item.marca_id) {
-              return String(item.marca_id._id) === String(_doc.marca_id._id)
+            if (item.marca_id._id.length) {
+              return String(item.marca_id._id) === String(already.marca_id._id)
             } else {
-              return _doc.sem_marca
+              return already.sem_marca
             }
           }
 
           const verifyFlavor = () => {
             if (item.sabor) {
-              if (item.sabor.definido && _doc.sabor.definido) {
-                return functions.keyWord(item.sabor.nome) === _doc.sabor.nome_key
+              if (item.sabor.definido && already.sabor.definido) {
+                return functions.keyWord(item.sabor.nome) === already.sabor.nome_key
               } else {
-                return (item.sabor.definido === _doc.sabor.definido)
+                return (item.sabor.definido === already.sabor.definido)
               }
             } else {
-              return !_doc.sabor.definido
+              return !already.sabor.definido
             }
           }
 
-          if (item.marca_id) {
+          if (item.marca_id._id.length) {
             if (verifyBrand() && verifyWeight() && verifyType() && verifyFlavor()) {
-              response = _doc
+              response = already
             }
           } else {
-            if (_doc.sem_marca) {
+            if (already.sem_marca) {
               if (verifyType() && verifyWeight() && verifyFlavor()) {
-                response = _doc
+                response = already
               }
             }
           }
@@ -167,17 +176,22 @@ exports.save = async ({
         // // console.log('item.precos.cidades', item.precos[0].cidades)
         // // console.log('item.precos.cidades.historico', item.precos[0].cidades[0].historico)
         await this._update({
-          data: item, local, mongo_data: response
+          data: item, local, mongo_data: response, db
         })
       }
 
-      const { _doc: new_doc } = await Product.findByIdAndUpdate(response._id, { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : nivel }, { new: true })
+      const updateData = { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : nivel }
 
-      return { ...new_doc, cache_id }
+      await db.product.updateOne({
+        _id: new ObjectId(response._id)
+      }, updateData)
+
+      return { ...response, ...updateData }
     } else {
-      const { _doc } = await Product.create(item)
 
-      return { ..._doc, cache_id}
+      const { insertedId } = await db.product.insertOne(item)
+
+      return { ...item, _id: insertedId }
     }
 
   } catch(err) {
@@ -187,7 +201,7 @@ exports.save = async ({
 }
 
 exports._update = async ({
-  data, hash_identify_device = '', local, mongo_data
+  data, hash_identify_device = '', local, mongo_data, db
 }) => {
   try {
     // console.log('product._update', { data, local, mongo_data })
@@ -195,9 +209,7 @@ exports._update = async ({
     let response = data
 
     if (!mongo_data) {
-      const { _doc } = await Product.findById(data.api_id)
-
-      mongo_data = _doc
+      mongo_data = await db.product.findOne({ _id: new ObjectId(data.api_id) })
     }
 
     if (mongo_data) {
@@ -241,9 +253,11 @@ exports._update = async ({
             .map(({ preco_u, supermercado_id }) => ({
               async fn() {
                 try {
-                  const { _doc } = await Supermarket.findById(supermercado_id._id)
+                  const supermarket = await db.supermarket.findOne({
+                    _id: new ObjectId(supermercado_id._id)
+                  }, { produtos: 1, nome: 1 })
           
-                  let products = _doc.produtos
+                  let products = supermarket.produtos
           
                   // console.log('updatePricesInSupermarkets products', products)
           
@@ -255,19 +269,26 @@ exports._update = async ({
                   } else {
                     products = [ ...products, {
                       produto_id: {
-                        _id: mongo_data._id,
+                        _id: new ObjectId(mongo_data._id),
                         cache_id: 0
                       },
                       preco_u, atualizado
                     }]
                   }
-          
-                  await Supermarket.findByIdAndUpdate(supermercado_id._id, { produtos: products })
+                  
+                  await db.supermarket.updateOne({
+                    _id: new ObjectId(supermercado_id._id)
+                  }, {
+                    $set: { produtos: products }
+                  })
           
                   await pushNotificationControllers
                     .notify({ 
                       _id: mongo_data ? mongo_data._id : data.api_id, 
-                      preco_u, local, supermercado_id, moment: atualizado
+                      produto_nome: mongo_data ? mongo_data.nome : data.nome,
+                      preco_u, local, 
+                      supermercado_id, supermercado_nome: supermarket.nome,
+                      moment: atualizado, db
                     })
           
                 } catch(e) {
@@ -336,6 +357,16 @@ exports._update = async ({
 
           mongo_price.historico = price.historico
 
+          mongo_price.maior_preco.supermercado_id = {
+            ...mongo_price.maior_preco.supermercado_id,
+            _id: new ObjectId(mongo_price.maior_preco.supermercado_id._id)
+          }
+
+          mongo_price.menor_preco.supermercado_id = {
+            ...mongo_price.menor_preco.supermercado_id,
+            _id: new ObjectId(mongo_price.menor_preco.supermercado_id._id)
+          }
+
           // // console.log('depois', { mongo_price, price })
   
           const cidades = mongo_precos[mongo_state_index].cidades
@@ -348,11 +379,27 @@ exports._update = async ({
 
           if (region_index !== -1) {
             const price = precos[state_index].cidades[region_index]
+
+            price.maior_preco.supermercado_id = {
+              ...price.maior_preco.supermercado_id,
+              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+            }
+  
+            price.menor_preco.supermercado_id = {
+              ...price.menor_preco.supermercado_id,
+              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+            }
     
             const _result = {
               cidade_id: local.cidade._id,
               menor_preco: price.menor_preco,
-              maior_preco: price.maior_preco || { preco_u: '0' },
+              maior_preco: price.maior_preco || { 
+                supermercado_id: {
+                  _id: new ObjectId(''),
+                  cache_id: 0
+                },
+                preco_u: '0' 
+              },
               historico: price.historico || []
             }
     
@@ -370,13 +417,29 @@ exports._update = async ({
 
           if (region_index !== -1) {
             const price = precos[state_index].cidades[region_index]
+
+            price.maior_preco.supermercado_id = {
+              ...price.maior_preco.supermercado_id,
+              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+            }
+  
+            price.menor_preco.supermercado_id = {
+              ...price.menor_preco.supermercado_id,
+              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+            }
   
             const _result = {
               estado_id: local.estado._id,
               cidades: [{
                 cidade_id: local.cidade._id,
                 menor_preco: price.menor_preco,
-                maior_preco: price.maior_preco || { preco_u: '0' },
+                maior_preco: price.maior_preco || { 
+                  supermercado_id: {
+                    _id: new ObjectId(''),
+                    cache_id: 0
+                  },
+                  preco_u: '0' 
+                },
                 historico: price.historico || []
               }]
             }
@@ -390,17 +453,14 @@ exports._update = async ({
 
       // // console.log('product._update end', { mongo_precos })
 
-      const { _doc } = await Product
-        .findByIdAndUpdate(
-          mongo_data ? mongo_data._id : data.api_id, 
-          { precos: mongo_precos, nivel: mongo_precos && mongo_data.nivel > 2 ? 2 : mongo_data.nivel }, 
-          { new: true }
-        )
+      const updateData = { precos: mongo_precos, nivel: mongo_precos && mongo_data.nivel > 2 ? 2 : mongo_data.nivel }
 
-      response = _doc
+      await db.product.updateOne({
+          _id: new ObjectId(mongo_data ? mongo_data._id : data.api_id)
+        }, { $set: updateData })
+
+      response = { ...mongo_data, ...updateData }
     }
-
-    // (END) ATUALIZAR OS PRECOS
 
     return { ...response, cache_id: data.cache_id }
 
@@ -410,17 +470,20 @@ exports._update = async ({
   }
 }
 
-exports.updatePrices = ({ 
-  _id, local = {}, supermercado_id, preco_u, moment,
-  finished
+exports.updatePrices = async ({ 
+  _id, local = {}, preco_u, moment,
+  finished, db,
+  supermercado_id, supermercado_nome
 }) => {
   return new Promise((resolve, reject) => {
-    Product.findById(_id)
-      .select('precos presenca nivel')
-      .then(product => {
+    const produto = await db.product.findOne({
+      _id: new ObjectId(_id)
+    }, { precos: 1, nivel: 1, nome: 1 })
+
+    if (produto) {
         const { estado, cidade } = local
 
-        const prices = [ ...product.precos ]
+        const prices = [ ...produto.precos ]
         
         let newPrices = []
 
@@ -437,7 +500,10 @@ exports.updatePrices = ({
         const historico = {
           data: moment,
           preco_u,
-          supermercado_id
+          supermercado_id:  {
+            ...supermercado_id,
+            _id: new ObjectId(supermercado_id._id)
+          }
         }
      
         const state_index = prices.findIndex(preco => preco.estado_id === estado._id)
@@ -473,6 +539,16 @@ exports.updatePrices = ({
 
             const cidades = prices[state_index].cidades
 
+            price.maior_preco.supermercado_id = {
+              ...price.maior_preco.supermercado_id,
+              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+            }
+  
+            price.menor_preco.supermercado_id = {
+              ...price.menor_preco.supermercado_id,
+              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+            }
+
             cidades.splice(region_index, 1, price)
 
             prices[state_index].cidades = cidades
@@ -481,13 +557,23 @@ exports.updatePrices = ({
 
             const menor_preco = {
               preco_u,
-              supermercado_id
+              supermercado_id: {
+                ...supermercado_id,
+                _id: new ObjectId(supermercado_id._id)
+              }
+            }
+
+            const maior_preco = {
+              supermercado_id: {
+                _id: new ObjectId(''),
+                cache_id: 0
+              }, preco_u: '0' 
             }
 
             const _result = {
               cidade_id: cidade._id,
               menor_preco,
-              maior_preco: { preco_u: '0' },
+              maior_preco,
               historico: [historico]
             }
 
@@ -498,14 +584,27 @@ exports.updatePrices = ({
         } else {
           // SE NAO TIVER ESSE ESTADO
 
+          const menor_preco = {
+            preco_u,
+            supermercado_id: {
+              ...supermercado_id,
+              _id: new ObjectId(supermercado_id._id)
+            }
+          }
+
+          const maior_preco = {
+            supermercado_id: {
+              _id: new ObjectId(''),
+              cache_id: 0
+            }, preco_u: '0' 
+          }
+
           const _result = {
             estado_id: estado._id,
             cidades: [{
               cidade_id: cidade._id,
-              menor_preco: {
-                preco_u,
-                supermercado_id
-              },
+              menor_preco,
+              maior_preco,
               historico: [historico]
             }]
           }
@@ -520,26 +619,30 @@ exports.updatePrices = ({
         }
         
         if (finished) {
-          data_update.presenca = product.presenca + 1
+          data_update.presenca = produto.presenca + 1
         }
         
         // console.log('updatePrices ', data_update.precos)
 
-        Product
-          .updateOne({ _id }, { ...data_update, nivel: prices.length && product.nivel > 2 ? 2 : product.nivel })
-          .then(async () => {
-            await pushNotificationControllers
-              .notify({ 
-                _id, preco_u, local, supermercado_id, moment
-              })
+        const updateData = { ...data_update, nivel: prices.length && produto.nivel > 2 ? 2 : produto.nivel }
+
+        await db.product.updateOne({
+          _id: new ObjectId(_id)
+        }, {
+          $set: updateData
+        })
+
+        await pushNotificationControllers
+          .notify({ 
+            _id, preco_u, local, supermercado_id, moment, db,
+            supermercado_nome, produto_nome: produto.nome
           })
-          .then(resolve)
-          .catch(reject)
-      })
-      .catch((e) => {
-        console.error(e)
-        reject('')
-      })
+
+        resolve('')
+
+    } else {
+      reject('')
+    }
   })
 }
 
@@ -554,7 +657,7 @@ exports.store = async (req, res) => {
     // console.log('product.store ', req.body)
 
     const data = await save({
-      data: req.body, hash_identify_device
+      data: req.body, hash_identify_device, db: req.db
     })
 
     res.status(201).json({ ok: !!data, data })
@@ -565,46 +668,73 @@ exports.store = async (req, res) => {
   }
 }
 
-exports.index = (req, res) => {
+exports.index = async (req, res) => {
   // OK
 
   try {
+    const { page = 1 } = req.params
 
-    Product.countDocuments((err, count) => {
-      if (err) {
-        res.status(500).send()
-      } else {
-        const { page = 1 } = req.params
+    let {
+      limit: limitQuery
+    } = req.query
 
-        let {
-          limit: limitQuery
-        } = req.query
+    if (!limitQuery) {
+      limitQuery = limit
+    }
 
-        if (!limitQuery) {
-          limitQuery = limit
-        }
-
-        Product.find()
-          .limit(limitQuery)
-          .skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(Documents => {
-            res.status(200).json({ ok: true, data: Documents, count, limit: limitQuery })
-          })
-          .catch(_ => {
-            res.status(500).send()
-          })
-
+    const options = [{
+      $sort: {
+        created_at: -1
       }
-    })
+    }]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    const optionsCounted = [{
+      $group: {
+        _id: null,
+        count: { $sum: 1 }
+      }
+    }, {
+      $project: {
+        _id: 0,
+        count: 1
+      }
+    }]
+
+    const [{ documents, postsCounted }] = await req.db.product.aggregate([{
+      $facet: {
+        documents: [
+          ...options,
+          ...optionsPaginated
+        ],
+        postsCounted: [
+          ...options,
+          ...optionsCounted
+        ]   
+      }
+    }]).toArray()
+    
+    let count = 0
+
+    if (postsCounted.length) {
+      count = postsCounted[0].count
+    }
+
+    res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
 
   } catch(err) {
     res.status(500).send()
   }
 }
 
-exports.all = (req, res) => {
+exports.all = async (req, res) => {
   // OK
+  // (DESC) BUSCAR PARA DOWNLOAD AUTOMATICO SOMENTE PRODUTOS APROVADOS PELO GESTOR
 
   const { status } = req.query
 
@@ -624,91 +754,90 @@ exports.all = (req, res) => {
 
   try {
 
-    // (DESC) BUSCAR PARA DOWNLOAD AUTOMATICO SOMENTE PRODUTOS APROVADOS PELO GESTOR
-    Product.find(where)
-      .populate()
-      .where('_id').nin(noIds)
-      .where('nivel').in([1])
-      .sort('-created_at')
-      .then(Documents => Documents.map(({ _doc }) => _doc))
-      .then(Documents => Documents.map(produto => {
-
-        const preco = {
-          preco_u: '0',
-          supermercado_id: {
-            cache_id: 0,
-            _id: ''
-          }
+    let documents = await req.db.supermarket.aggregate([{
+      $match: {
+        ...where,
+        nivel: {
+          $in: [1]
+        },
+        _id: {
+          $nin: noIds.map(_id => new ObjectId(_id))
         }
-
-        const response = {
-          estado_id: uf,
-          cidades: [{
-            cidade_id: mn,
-            menor_preco: preco,
-            maior_preco: preco,
-            historico: []
-          }]
+      }
+    }, {
+        $sort: {
+          created_at: -1
         }
-
-        const state_index = produto.precos.findIndex(({ estado_id }) => estado_id === uf)
-          
-        if (state_index !== -1) {
-          const state = produto.precos[state_index]
-    
-          const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
-    
-          if (region_index !== -1) {
-            const region = state.cidades[region_index]
-
-            response.cidades = [region]          
-          }
+      }, {
+        $lookup: {
+          from: 'brand',
+          localField: 'marca_id._id',
+          foreignField: '_id',
+          as: 'marca_obj'
         }
+      }, {
+        $unwind: '$marca_obj'
+      }
+    ]).toArray()
 
-        produto.precos = []
+    documents = documents.map(document => {
 
-        return produto
-      }))
-      .then(async Documents => {
-        const data = Documents
+      const preco = {
+        preco_u: '0',
+        supermercado_id: {
+          cache_id: 0,
+          _id: new ObjectId('')
+        }
+      }
 
-        const brandObjMiddleware = data.map(({ marca_id }, index) => ({
-          async fn() {
+      const response = {
+        estado_id: uf,
+        cidades: [{
+          cidade_id: mn,
+          menor_preco: preco,
+          maior_preco: preco,
+          historico: []
+        }]
+      }
 
-            let brand = {}
+      const state_index = document.precos.findIndex(({ estado_id }) => estado_id === uf)
+        
+      if (state_index !== -1) {
+        const state = document.precos[state_index]
   
-            if (marca_id._id.length) {
-              brand = await Brand.findById(marca_id._id)
-            }
+        const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
+  
+        if (region_index !== -1) {
+          const region = state.cidades[region_index]
 
-            data[index].marca_obj = brand
-          }
-        }))
+          response.cidades = [region]          
+        }
+      }
 
-        await functions.middlewareAsync(...brandObjMiddleware)
+      // (END) LOGICA DE ENTREGAR OU NÃO OS PREÇOS JÁ REGISTRADOS
+      document.precos = []
 
-        res.status(200).json(data)
-      })
-      .catch(_ => {
-        console.error(_)
-        res.status(500).send()
-      })
+      return document
+    })
 
+    res.status(200).json(documents)
   } catch(err) {
     console.error(err)
     res.status(500).send()
   }
 }
 
-exports.single = (req, res) => {
+exports.single = async (req, res) => {
 	try {
-    let { id: _id, page = 1 } = req.params
+    let { id, page = 1 } = req.params
     page = +page
+
     let {
       select = '',
       target, 
       limit: limitQuery
     } = req.query
+
     const {
       local,
       undefineds = []
@@ -722,128 +851,144 @@ exports.single = (req, res) => {
     // console.log('product.single params', req.params)
     // console.log('product.single body', req.body)
 
-    Product.findById(_id)
-      .where('nivel').in([1, 2])
-      .select(select)
-      .then(async single => {
+    const options = {}
 
-        if (single) {
-          switch (target) {
-            case 'app-single-product' :
-            case 'app-prices-update' :
-              const prices = single._doc
-                .precos
+    if (select.length) {
+      options.projection = functions.stringToObj(select)
+    }
 
-              const { estado = {}, cidade = {} } = local
+    const single = await req.db.product.findOne({
+      _id: new ObjectId(id),
+      nivel: {
+        $in: [1, 2]
+      }
+    }, options)
 
-              const { _id: uf } = estado
-              const { _id: mn } = cidade
+    if (single) {
+      switch (target) {
+        case 'app-single-product' :
+        case 'app-prices-update' :
+          const prices = single.precos
 
-              if (!uf || !mn) {
-                return res.status(400).send()
+          const { estado = {}, cidade = {} } = local
+
+          const { _id: uf } = estado
+          const { _id: mn } = cidade
+
+          if (!uf || !mn) {
+            return res.status(400).send()
+          }
+        
+          let historic = [], 
+            menor_preco, 
+            count = 0,
+            range = {}
+
+          const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
+      
+          if (state_index !== -1) {
+            const state = prices[state_index]
+      
+            const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
+      
+            if (region_index !== -1) {
+              const region = state.cidades[region_index]
+
+              count = region.historico.length
+
+              menor_preco = region.historico[0]
+              
+              range = {
+                menor_preco: region.menor_preco,
+                maior_preco: region.maior_preco
               }
-            
-              let historic = [], 
-                menor_preco, 
-                count = 0,
-                range = {}
-  
-              const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
-          
-              if (state_index !== -1) {
-                const state = prices[state_index]
-          
-                const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
-          
-                if (region_index !== -1) {
-                  const region = state.cidades[region_index]
+              
+              if (target === 'app-single-product') {
 
-                  count = region.historico.length
+                // (END) REFATORAR PARA UMA UNICA CONSULTA
+                const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
 
-                  menor_preco = region.historico[0]
-                  
-                  range = {
-                    menor_preco: region.menor_preco,
-                    maior_preco: region.maior_preco
-                  }
-                  
-                  if (target === 'app-single-product') {
-                    const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
-
-                    const supermarketsMiddleware = historic_paginaed.map((preco, index) => ({
-                      async fn() {
-                        const supermarket = await Supermarket.findById(preco.supermercado_id._id)
-                      
-                        historic[index] = {
-                          ...preco._doc,
-                          supermercado_obj: {
-                            ...supermarket._doc,
-                            produtos: [],
-                            _id: 0,
-                            api: true,
-                            api_id: supermarket._doc._id
-                          },
-                          // preco_u: preco.preco,
-                          // supermercado_id: preco.supermercado_id,
-                          // data: preco.data
-                        }
+                const supermarketsMiddleware = historic_paginaed.map((preco, index) => ({
+                  async fn() {
+                    const [supermarket] = await req.db.supermarket.aggregate([{
+                      $match: {
+                        _id: new ObjectId(preco.supermercado_id._id)
                       }
-                    }))
-          
-                    supermarketsMiddleware.length && await functions.middlewareAsync(...supermarketsMiddleware)
-                  } else {
-                    historic = region.historico
-                  }
-                }
-              }
-              res.status(200).json({ 
-                ok: true, data: historic,
-                menor_preco, range,
-                limit: limitQuery, count
-              })
-              break
-            case 'app-single-product-watch': 
-              const getLocale = (precos = []) => {
-                const state = precos.find(({ estado_id }) => estado_id === local.estado._id)
-            
-                if (state) {
-                  const region = state.cidades.find(({ cidade_id }) => cidade_id === local.cidade._id)
-            
-                  if (region) {
-          
-                    return {
-                      menor_preco: region.menor_preco,
-                      maior_preco: region.maior_preco
+                    }, {
+                      $group: {
+                        _id: '$_id',
+                        doc: { $first: "$$ROOT" }
+                      }
+                    }, { 
+                      $replaceRoot: {
+                        newRoot: { $mergeObjects: ['$doc', { produtos: [] }] }
+                      }
+                    }]).toArray()
+                  
+                    historic[index] = {
+                      ...preco,
+                      supermercado_obj: {
+                        ...supermarket,
+                        produtos: [],
+                        _id: 0,
+                        api: true,
+                        api_id: supermarket._id
+                      },
+                      // preco_u: preco.preco,
+                      // supermercado_id: preco.supermercado_id,
+                      // data: preco.data
                     }
                   }
+                }))
+      
+                supermarketsMiddleware.length && await functions.middlewareAsync(...supermarketsMiddleware)
+              } else {
+                historic = region.historico
+              }
+            }
+          }
+          res.status(200).json({ 
+            ok: true, data: historic,
+            menor_preco, range,
+            limit: limitQuery, count
+          })
+          break
+        case 'app-single-product-watch': 
+          const getLocale = (precos = []) => {
+            const state = precos.find(({ estado_id }) => estado_id === local.estado._id)
+        
+            if (state) {
+              const region = state.cidades.find(({ cidade_id }) => cidade_id === local.cidade._id)
+        
+              if (region) {
+      
+                return {
+                  menor_preco: region.menor_preco,
+                  maior_preco: region.maior_preco
                 }
               }
-
-              const data = getLocale(single.precos)
-
-              // console.log('response', data)
-
-              res.status(200).json({ ok: !!data, data })
-
-              break
-            default:
-              single = functions.setUndefineds({
-                data: single,
-                undefineds
-              })
-
-              res.status(200).json({ ok: true, data: single })
+            }
           }
-  
-        } else {
-          res.status(400).send()
-        }
 
-      })
-      .catch(e => {
-        console.error(e)
-        res.status(500).send()
-      })
+          const data = getLocale(single.precos)
+
+          // console.log('response', data)
+
+          res.status(200).json({ ok: !!data, data })
+
+          break
+        default:
+          single = functions.setUndefineds({
+            data: single,
+            undefineds
+          })
+
+          res.status(200).json({ ok: true, data: single })
+      }
+
+    } else {
+      res.status(400).send()
+    }
 			
 	} catch(error) {
     console.error(error)
@@ -893,15 +1038,23 @@ exports.indexBy = async (req, res) => {
 
     if (body.where.nome && body.where.nome.length) {
 
-      const regex = new RegExp(remove_accents(body.where.nome).toLocaleLowerCase())
+      const regex = new RegExp(functions.keyWord(body.where.nome))
 
-      const products_by_name = await Product
-        .find({ nome_key: { $regex: regex, $options: 'g' } })
-        .select('_id')
+      const products_by_name = await req.db.product.aggregate([
+        {
+          $match: {
+            nome_key: { $regex: regex, $options: 'g' }
+          }
+        }, {
+          $project: {
+            _id: 1
+          }
+        }
+      ]).toArray()
 
         if (products_by_name) {
           products_by_name.forEach(({ _id }) => {
-            where.names_ids.push(String(_id))
+            where.names_ids.push(_id)
           })
         }
     }
@@ -909,11 +1062,22 @@ exports.indexBy = async (req, res) => {
     if (body.where.observados) {
       // PEGAR ids DOS PRODUTOS OBSERVADOR POR ESSE push_token E local
 
-      const observer_products = await Watch
-        .find({ push_token: body.push_token })
-        .populate()
-        .where('local.estado.cache_id', local.estado.cache_id)
-        .where('local.cidade.cache_id', local.cidade.cache_id)
+      const observer_products = await req.db.watch.aggregate({
+        $match: {
+          push_token: body.push_token,
+          'local.estado.cache_id': {
+            $in: [local.estado.cache_id, 0]
+          },
+          'local.cidade.cache_id': {
+            $in: [local.cidade.cache_id, 0]
+          }
+        }
+      }, {
+        $project: {
+          _id: 0,
+          produto_id: 1
+        }
+      }).toArray()
       
       if (observer_products) {
         observer_products.forEach(({ produto_id }) => {
@@ -925,8 +1089,13 @@ exports.indexBy = async (req, res) => {
     if (typeof body.supermercado_id === 'string' && body.supermercado_id.length) {
       // PEGAR ids DOS PRODUTOS DO SUPERMERCADO
 
-      const products_by_supermarket = await Supermarket.findById(body.supermercado_id)
-        .select('produtos')
+      const products_by_supermarket = await req.db.supermarket.findOne({
+        _id: new ObjectId(body.supermercado_id)
+      }, {
+        projection: {
+          produtos: 1
+        }
+      })
 
       if (products_by_supermarket) {
         // const newIds = products_by_supermarket.produtos.filter(({
@@ -947,10 +1116,15 @@ exports.indexBy = async (req, res) => {
     if (typeof body.marca_id === 'string' && body.marca_id.length) {
       // PEGAR ids DOS PRODUTOS DO MARCA
 
-      const products_by_brand = await Product
-        .find()
-        .where('marca_id._id', body.marca_id)
-        .select('_id')
+      const products_by_brand = await req.db.product.aggregate([{
+        $match: {
+          'marca_id._id': new ObjectId(body.marca_id)
+        }
+      }, {
+        $project: {
+          _id: 1
+        }
+      }]).toArray()
 
       if (products_by_brand) {
         // const newIds = products_by_brand.filter(({
@@ -961,7 +1135,7 @@ exports.indexBy = async (req, res) => {
 
         //   return index === -1
         // }).map(({ _id }) => _id)
-        const newIds = products_by_brand.map(({ _id }) => String(_id))
+        const newIds = products_by_brand.map(({ _id }) => _id)
 
         where.brand_ids = newIds
       }
@@ -983,10 +1157,17 @@ exports.indexBy = async (req, res) => {
 
 
     if (body.where.tipos && body.where.tipos.length) {
-      const product_by_types = await Product
-        .find()
-        .where('tipo.texto_key').in(body.where.tipos)
-        .select('_id')
+      const product_by_types = await req.db.product.aggregate([{
+        $match: {
+          'tipo.texto_key': {
+            $in: body.where.tipos.map(v => functions.keyWord(v))
+          }
+        }
+      }, {
+        $project: {
+          _id: 1
+        }
+      }]).toArray()
 
       if (product_by_types) {
         // const newIds = product_by_types.filter(({
@@ -1004,10 +1185,9 @@ exports.indexBy = async (req, res) => {
         //   return index === -1 || index2 !== -1
         // })
         // .map(({ _id }) => _id)
-        const newIds = product_by_types
-          .map(({ _id }) => String(_id))
 
-        where.types_ids = newIds
+        where.types_ids = product_by_types
+          .map(({ _id }) => _id)
 
         // if (ids_from_request) {
         //   where.ids = newIds
@@ -1017,46 +1197,46 @@ exports.indexBy = async (req, res) => {
       }
     }
 
-    const then = async Documents => {
-      let data = [ ...Documents ]
+    const then = async documents => {
+      // let data = [ ...documents ]
 
-      data = data.map(item => ({
-        ...item._doc, 
-        precos: []
-      }))
+      // data = data.map(item => ({
+      //   ...item, 
+      //   precos: []
+      // }))
 
-      const brandObjMiddleware = data.map(({ sem_marca, marca_id }, index) => ({
-        async fn() {
+      // const brandObjMiddleware = data.map(({ sem_marca, marca_id }, index) => ({
+      //   async fn() {
 
-          if (!sem_marca) {
-            let brand = await Brand.findById(marca_id._id)
+      //     if (!sem_marca) {
+      //       let brand = await Brand.findById(marca_id._id)
 
-            data[index].marca_obj = brand
-          }
-        }
-      }))
+      //       data[index].marca_obj = brand
+      //     }
+      //   }
+      // }))
 
-      const watchObjMiddleware = data.map(({ _id }, index) => ({
-        async fn() {
+      // const watchObjMiddleware = data.map(({ _id }, index) => ({
+      //   async fn() {
 
-          let watch = await Watch.findOne()
-            .where('produto_id._id', _id)
-            .populate()
-            .where('local.estado.cache_id', local.estado.cache_id)
-            .where('local.cidade.cache_id', local.cidade.cache_id)
+      //     let watch = await Watch.findOne()
+      //       .where('produto_id._id', _id)
+      //       .populate()
+      //       .where('local.estado.cache_id', local.estado.cache_id)
+      //       .where('local.cidade.cache_id', local.cidade.cache_id)
 
-          if (watch) {       
-            data[index].notificacao = watch
-          }
+      //     if (watch) {       
+      //       data[index].notificacao = watch
+      //     }
 
-        }
-      }))
+      //   }
+      // }))
 
-      await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
+      // await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
 
-      data.precos = []
+      // data.precos = []
 
-      res.status(200).json({ ok: true, data, limit: limitQuery })
+      res.status(200).json({ ok: true, data: documents, limit: limitQuery })
     }
 
     const _catch = e => {
@@ -1072,7 +1252,7 @@ exports.indexBy = async (req, res) => {
       ...where.brand_ids,
       ...where.favorites_ids,
       ...where.request_ids
-    ])]
+    ].map(_id => new ObjectId(_id)))]
 
     // console.log({ where, ids })
 
@@ -1102,44 +1282,130 @@ exports.indexBy = async (req, res) => {
 
     // console.log({ ids })
 
-    const clean_search = () => {
-      Product.find()
-        .populate()
-        .where('nivel').in([1, 2])
-        .where('_id').nin(where.not_ids)
-        .limit(limitQuery)
-        .skip((limitQuery * page) - limitQuery)
-        .sort('-created_at')
-        .then(then)
-        .catch(_catch)
+    const filterMatch = {
+      _id: {
+        $nin: where.not_ids.map(_id => new ObjectId(_id))
+      }
     }
 
-    const filter_search = () => {
+    const optionsMatch = {
+      nivel: {
+        $in: [1, 2]
+      }
+    }
+    
+    const optionsDocuments = [{
+        $sort: {
+          created_at: -1
+        }
+      }, {
+        $lookup: {
+          from: 'brand',
+          localField: 'marca_id._id',
+          foreignField: '_id',
+          as: 'marca_obj'
+        }
+      }, {
+        $lookup: {
+          from: 'watch',
+          localField: '_id',
+          foreignField: 'produto_id._id',
+          pipeline: [{
+            $match: {
+              'local.estado.cache_id': {
+                $in: [local.estado.cache_id, 0]
+              },
+              'local.cidade.cache_id': {
+                $in: [local.cidade.cache_id, 0]
+              }
+            }
+          }],
+          as: 'notificacao'
+        }
+      }, {
+        $unwind: 'marca_obj'
+      }, {
+        $unwind: 'notificacao'
+      }, {
+        $group: {
+          _id: '$_id',
+          doc: { $first: '$$ROOT' }
+        }
+      }, {
+        $replaceRoot: {
+          newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
+        }
+      }
+    ]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    const clean_search = async () => {
+      const documents = await req.db.product.aggregate([
+        {
+          $match: {
+            ...optionsMatch,
+          }
+        },
+        ...optionsDocuments,
+        ...optionsPaginated
+      ]).toArray()
+
+      await then(documents)
+
+      // Product.find()
+      //   .populate()
+      //   .where('nivel').in([1, 2])
+      //   .where('_id').nin(where.not_ids)
+      //   .limit(limitQuery)
+      //   .skip((limitQuery * page) - limitQuery)
+      //   .sort('-created_at')
+      //   .then(then)
+      //   .catch(_catch)
+    }
+
+    const filter_search = async () => {
+      const options = {
+        $match: {
+          ...optionsMatch,
+          ...filterMatch
+        }
+      },
+
       if (body.no_page) {
-        Product.find()
-          .populate()
-          .where('nivel').in([1, 2])
-          .where('_id').in(ids)
-          .where('_id').nin(where.not_ids)
-          .sort('-created_at')
-          .then(then)
-          .catch(_catch)
+
+        const documents = await req.db.product.aggregate([
+          options,
+          ...optionsDocuments
+        ]).toArray()
+  
+        await then(documents)
+        // Product.find()
+        //   .populate()
+        //   .where('nivel').in([1, 2])
+        //   .where('_id').in(ids)
+        //   .where('_id').nin(where.not_ids)
+        //   .sort('-created_at')
+        //   .then(then)
+        //   .catch(_catch)
       } else {
-        Product.find()
-          .populate()
-          .where('nivel').in([1, 2])
-          .where('_id').in(ids)
-          .where('_id').nin(where.not_ids)
-          .limit(limitQuery).skip((limitQuery * page) - limitQuery)
-          .sort('-created_at')
-          .then(then)
-          .catch(_catch)
+        const documents = await req.db.product.aggregate([
+          options,
+          ...optionsDocuments,
+          ...optionsPaginated
+        ]).toArray()
+  
+        await then(documents)
       }
     }
 
     
     if (ids.length) {
-      filter_search()
+      await filter_search()
     } else {
       if (
         (
@@ -1151,9 +1417,9 @@ exports.indexBy = async (req, res) => {
           body.where.ids
         ) && body.where.tipos.length
       ) {
-        filter_search()
+        await filter_search()
       } else {
-        clean_search()
+        await clean_search()
       }
     }
 
@@ -1164,14 +1430,14 @@ exports.indexBy = async (req, res) => {
 
 }
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   // OK
 
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    if (typeof _id !== 'string')
+    if (typeof id !== 'string')
       throw new Error()
 
     const { preco } = req.body
@@ -1187,7 +1453,7 @@ exports.update = (req, res) => {
       const { nome: cidade_nome } = cidade
 
       if (functions.hasEmpty({
-        estado_nome, cidade_nome, supermercado_id, _id
+        estado_nome, cidade_nome, supermercado_id, id
       })) {
         return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
       }
@@ -1201,70 +1467,64 @@ exports.update = (req, res) => {
         hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
       }
 
-      Supermarket
-        .findOne({ _id: supermercado_id })
-        .select('produtos')
-        .then(supermarket => {
+      const supermarket = await req.db.supermarket.findOne({
+        _id: new ObjectId(supermercado_id)
+      }, { produtos: 1, nome: 1 })
 
-          // console.log({ supermarket })
+      let products = supermarket.produtos
 
-          let products = supermarket.produtos
+      // console.log('supermarket.produtos ', products)
+      const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(id))
 
-          // console.log('supermarket.produtos ', products)
-          const productIndex = products.findIndex(({ produto_id }) => produto_id._id === _id)
+      if (productIndex !== -1) {
+        products[productIndex].preco_u = preco_u 
+      } else {
+        products = [ ...products, {
+          produto_id: {
+            _id: new ObjectId(id), cache_id: 0
+          },
+          preco_u,
+          atualizado
+        }]
+      }
 
-          if (productIndex !== -1) {
-            products[productIndex].preco_u = preco_u 
-          } else {
-            products = [ ...products, {
-              produto_id: {
-                _id, cache_id: 0
-              },
-              preco_u,
-              atualizado
-            }]
-          }
+      await req.db.supermarket.updateOne({
+        _id: new ObjectId(supermarket._id)
+      }, {
+        $set: {
+          produtos: products
+        }
+      })
 
-
-          Supermarket.findByIdAndUpdate(supermarket._id, {
-            produtos: products
-          })
-          .then(async () => {
-            try {
-              // console.log('updatePrices props ', {
-              //   _id, 
-              //   local: { estado, cidade }, 
-              //   supermercado_id, preco_u 
-              // })
-              await this.updatePrices({
-                _id, local: { estado, cidade }, 
-                supermercado_id, preco_u 
-              })
-
-              res.status(200).json({ ok: true, message: 'Dados atualizados!' })
-            } catch(e) {
-              console.error(e)
-              res.status(500).send()
-            }
-
-          })
-          .catch((e) => {
-            console.error(e)
-            res.status(500).send()  
-          })
+      try {
+        // console.log('updatePrices props ', {
+        //   _id, 
+        //   local: { estado, cidade }, 
+        //   supermercado_id, preco_u 
+        // })
+        await this.updatePrices({
+          _id: id, local: { estado, cidade }, 
+          supermercado_id, preco_u, db: req.db,
+          supermercado_nome: supermarket.nome
         })
-        .catch(e => {
-          console.error(e) 
-          res.status(500).send()
-        })
+
+        res.status(200).json({ ok: true, message: 'Dados atualizados!' })
+      } catch(e) {
+        console.error(e)
+        res.status(500).send()
+      }
+
     } else {
-      Product.findOneAndUpdate({
-        _id
-      }, req.body)
-      .then(() => res.status(200).send())
-      .catch(() => res.status(400).send())
+      await req.db.product.updateOne({
+        _id: new ObjectId(id)
+      }, {
+        $set: req.body
+      })
+
+      res.status(200).send()
     }
   } catch(e) {
+    console.error(e)
     res.status(500).send()
   }
 }
@@ -1286,7 +1546,7 @@ exports.updateMany = async (req, res) => {
           if (campo == 'precos') {
             await this.updatePrices({
               _id: produto_id._id,
-              local, moment, preco_u: data.preco_u, supermercado_id, finished
+              local, moment, preco_u: data.preco_u, supermercado_id, finished, db: req.db
             })
           }
 
@@ -1306,24 +1566,21 @@ exports.updateMany = async (req, res) => {
   }
 }
 
-exports.remove = (req, res) => {
+exports.remove = async (req, res) => {
   // OK
 
   try {
 
-    const { id: _id } = req.params
+    const { id } = req.params
 
-    if (typeof _id !== 'string')
+    if (typeof id !== 'string')
       throw new Error()
 
-      Product.findByIdAndDelete(_id)
-        .then(() => {
-          res.status(200).send()
-        })
-        .catch(err => {
-          console.error(err)
-          res.status(400).send()
-        })
+    await req.db.product.deleteOne({
+      _id: new ObjectId(id)
+    })
+
+    res.status(200).send()
 
   } catch(e) {
     res.status(500).send(e)

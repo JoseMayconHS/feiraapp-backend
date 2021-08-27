@@ -146,10 +146,19 @@ exports.remove = (req, res) => {
   }
 }
 
-exports.notify = async ({ _id, preco, local, supermercado_id, moment }) => {
+exports.notify = async ({ 
+  _id, preco, local, supermercado_id, moment, db,
+  produto_nome = '', supermercado_nome = ''
+}) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
-    console.log('notify', { _id, preco, local, supermercado_id, moment })
+    console.log('notify', { _id, preco, local, supermercado_id, moment, produto_nome, supermercado_nome })
+
+    if (!produto_nome.length || !supermercado_nome.length) {
+      throw new Error(JSON.stringify({
+        produto_nome, supermercado_nome
+      }))
+    }
   } catch(e) {
     console.error(e)
   }

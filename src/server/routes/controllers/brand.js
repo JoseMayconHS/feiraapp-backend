@@ -150,7 +150,7 @@ exports.index = async (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.mongo.adm.aggregate([{
+    const [{ documents, postsCounted }] = await req.db.brand.aggregate([{
       $facet: {
         documents: [
           ...options,
@@ -268,7 +268,7 @@ exports.indexBy = (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.mongo.brand.aggregate([{
+    const [{ documents, postsCounted }] = await req.db.brand.aggregate([{
       $facet: {
         documents: [
           ...options,
@@ -304,7 +304,7 @@ exports.update = async (req, res) => {
 
     const { id } = req.params
 
-    await req.mongo.adm.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
+    await req.db.brand.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
 
     res.status(200).json({ ok: true })
 
@@ -322,7 +322,7 @@ exports.remove = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
-    await req.mongo.adm.deleteOne({ _id: new ObjectId(id) })
+    await req.db.brand.deleteOne({ _id: new ObjectId(id) })
 
     res.status(200).send()
 

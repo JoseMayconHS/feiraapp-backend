@@ -59,7 +59,7 @@ exports.index = async (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.mongo.adm.aggregate([{
+    const [{ documents, postsCounted }] = await req.db.adm.aggregate([{
       $facet: {
         documents: [
           ...options,
@@ -91,7 +91,7 @@ exports.remove = async (req, res) => {
   try {
     const { id } = req.params
 
-    await req.mongo.adm.deleteOne({ _id: new ObjectId(id) })
+    await req.db.adm.deleteOne({ _id: new ObjectId(id) })
 
     res.status(200).send()
     
@@ -103,7 +103,7 @@ exports.remove = async (req, res) => {
 exports.qtd = async (req, res) => {
   try {
 
-    const already = await req.mongo.adm.count()
+    const already = await req.db.adm.count()
 
     res.status(200).json({ already: !!already });
 
@@ -129,9 +129,9 @@ exports.store = async (req, res) => {
 
     try {
       
-      const { insertedId } = await req.mongo.adm.insertOne({ ...data, created_at: Date.now() })
+      const { insertedId } = await req.db.adm.insertOne({ ...data, created_at: Date.now() })
 
-      // const document = await req.mongo.adm.findOne({ _id: insertedId }, { projection: { password: 0 } })
+      // const document = await req.db.adm.findOne({ _id: insertedId }, { projection: { password: 0 } })
       const document = {
         _id: insertedId,
         ...data,
@@ -183,7 +183,7 @@ exports.update = async (req, res) => {
 
     req.body.username_key = functions.keyWord(req.body.username)
 
-    await req.mongo.adm.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
+    await req.db.adm.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
 
     res.status(200).json({ ok: true })
   } catch(e) {
@@ -199,7 +199,7 @@ exports.sign = async (req, res) => {
     const { username, password, level } = req.body
 
 
-    const adm = await req.mongo.adm.findOne({ username_key: functions.keyWord(username) })
+    const adm = await req.db.adm.findOne({ username_key: functions.keyWord(username) })
 
     try {
       if (!adm) {
@@ -246,7 +246,7 @@ exports.reconnect = async (req, res) => {
 
     const where = { _id: new ObjectId(req.payload._id) }
     
-    const adm = await req.mongo.adm.findOne(where, { projection: { password: 0 } })
+    const adm = await req.db.adm.findOne(where, { projection: { password: 0 } })
     
     if (adm) {
 

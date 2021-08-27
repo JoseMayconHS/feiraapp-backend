@@ -88,6 +88,12 @@ exports.setUndefineds = ({
   return data
 }
 
+exports.stringToObj = v => v.split(' ').reduce((acc, curr) => {
+  acc[curr] = 1
+
+  return acc
+}, {})
+
 exports.keyWord = (word) => remove_accents(word).toLowerCase().trim()
 
 exports.capitalize = (val) => {
