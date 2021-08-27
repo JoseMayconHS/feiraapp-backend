@@ -1,0 +1,44 @@
+{
+  "push_token": {
+    "type": "String",
+    "required": true
+  },
+  "valor": {
+    "type": "String",
+    "required": true
+  },
+  "produto_id": {
+    "type": {
+      "cache_id": {
+        "type": "Number",
+        "default": 0
+      },
+      "_id": {
+        "type": "String",
+        "default": ""
+      }
+    }
+  },
+  "local": {
+    "type": {
+      "estado": {
+        "cache_id": "Number",
+        "nome": "String",
+        "sigla": "String",
+      },
+      "cidade": {
+        "estado_id": "Number",
+        "cache_id": "Number",
+        "nome": "String",
+      }
+    }
+  },
+  "cache_id": {
+    "type": "",
+    "default": 0
+  },
+  "hash_identify_device": {
+    "type": "String",
+    "default": ""
+  }
+}

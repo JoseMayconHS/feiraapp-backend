@@ -1,0 +1,180 @@
+{
+  "cache_id": {
+    "type": "Number",
+    "default": 0
+  },
+  "hash_identify_device": {
+    "type": "String",
+    "default": ""
+  },
+  "status": {
+    "type": "Boolean",
+    "default": true
+  },
+  "supermercado_cache_id": {
+		"type": "String",
+		"default": ""
+	},
+	"nome": {
+		"type": "String",
+		"required": true
+	},
+	"nome_key": {
+		"type": "String",
+		"default": ""
+	},
+	"nivel": {
+		"type": "Number",
+		"default": 4
+	},
+	"fixado": {
+		"type": "Boolean",
+		"default": false
+	},
+	"presenca": {
+		"type": "Number",
+		"default": 0
+	},
+	"tipo": {
+		"type": {
+			"texto": {
+				"type": "String",
+				"deafult": "Utilitário"
+			},
+			"texto_key": {
+				"type": "String",
+				"default": ""
+			}
+		}
+	},
+	"sabor": {
+		"definido": {
+			"type": "Boolean",
+			"default": false
+		}, 
+		"nome": {
+			"type": "String",
+			"default": ""
+		},
+		"nome_key": {
+			"type": "String",
+			"default": ""
+		}
+	},
+	"peso": {
+		"tipo": {
+			"type": "String",
+			"required": true,
+			"default": "unidade"
+		},
+		"valor": {
+			"type": "String",
+			"required": true,
+			"default": "1"
+		},
+		"force_down": {
+      "type": "bool",
+      "default": false
+    }
+	},
+	"precos": {
+		"type": [{
+			"estado_id": "Number",
+			"cidades": [{
+				"cidade_id": "Number",
+				"menor_preco": {
+          "type": {
+            "preco_u": {
+              "type": "String",
+              "default": "0"
+            },
+            "supermercado_id": {
+              "type": {
+                "cache_id": {
+                  "type": "Number",
+                  "default": 0
+                },
+                "_id": {
+                  "type": "String",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+				"maior_preco": {
+          "type": {
+            "preco_u": {
+              "type": "String",
+              "default": "0"
+            },
+            "supermercado_id": {
+              "type": {
+                "cache_id": {
+                  "type": "Number",
+                  "default": 0
+                },
+                "_id": {
+                  "type": "String",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+				"historico": {
+					"type": [{
+            "preco_u": {
+              "type": "String",
+              "default": "0"
+            },
+            "supermercado_id": {
+              "type": {
+                "cache_id": {
+                  "type": "Number",
+                  "default": 0
+                },
+                "_id": {
+                  "type": "String",
+                  "default": ""
+                }
+              }
+            },
+						"data": {
+							"dia": {
+								"type": "Number",
+								"required": true
+							},
+							"mes": {
+								"type": "Number",
+								"required": true
+							},
+							"ano": {
+								"type": "Number",
+								"required": true
+							}
+						}
+					}],
+					"default": []
+				}
+			}]
+		}],
+		"default": []
+	},
+	"marca_id": {
+    "type": {
+      "cache_id": {
+        "type": "Number",
+        "default": 0
+      },
+      "_id": {
+        "type": "String",
+        "default": ""
+      }
+    }
+  },
+	"sem_marca": {
+		"type": "Boolean",
+		"default": false
+	}
+}

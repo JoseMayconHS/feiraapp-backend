@@ -1,0 +1,76 @@
+{
+  "cache_id": {
+    "type": "Number",
+    "default": 0
+  },
+  "hash_identify_device": {
+    "type": "String",
+    "default": ""
+  },
+  "status": {
+    "type": "Boolean",
+    "default": true
+  },
+	"nome": {
+		"type": "String",
+		"required": true
+	},
+	"nome_key": {
+		"type": "String",
+		"required": true,
+		"default": ""
+	},
+	"classificacao": {
+		"type": "Number",
+		"default": 0
+	},
+	"tot_produtos": {
+		"type": "Number",
+		"deafult": 0
+	},
+	"nivel": {
+		"type": "Number",
+		"default": 4
+	},
+	"produtos": {
+		"type": [{
+			"produto_id": {
+        "type": {
+          "cache_id": {
+            "type": "Number",
+            "default": 0
+          },
+          "_id": {
+            "type": "String",
+            "default": ""
+          }
+        }
+      },
+			"preco_u": {
+				"type": "String",
+				"required": true
+			}, 
+			"atualizado": {
+				"dia": "Number",
+				"mes": "Number",
+				"ano": "Number",
+				"hora": "String"
+			}
+		}],
+		"default": []
+	},
+	"local": {
+    "type": {
+      "estado": {
+        "cache_id": "Number",
+        "nome": "String",
+        "sigla": "String",
+      },
+      "cidade": {
+        "estado_id": "Number",
+        "cache_id": "Number",
+        "nome": "String",
+      }
+    }
+  },
+}

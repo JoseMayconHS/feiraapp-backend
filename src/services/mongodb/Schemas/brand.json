@@ -1,0 +1,26 @@
+{
+  "cache_id": {
+    "type": "Number",
+    "default": 0
+  },
+  "hash_identify_device": {
+    "type": "String",
+    "default": ""
+  },
+  "status": {
+    "type": "Boolean",
+    "default": true
+  },
+  "nome": {
+		"type": "String",
+		"required": true
+	},
+	"nome_key": {
+		"type": "String",
+		"default": ""
+	},
+	"descricao": {
+		"type": "String",
+		"default": ""
+	}
+}
