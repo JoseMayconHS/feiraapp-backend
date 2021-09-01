@@ -10,9 +10,8 @@ route
 	.put('/auth/app/produto/:id', productControllers.update)
 	.put('/auth/app/feira/finalizar', userControllers.finishShopping)
 	// Dashboard
-	.put('/auth/admin/product/:id', productControllers.update)
-	.put('/auth/admin/user/status/:id', admControllers.toggleUserSignUp)
+	.put('/auth/admin/produto/:id', productControllers.update)
 	// Ambos
-	.put('/auth/admin/product/:id', productControllers.update)
+	.put('/auth/admin/produto/:id', productControllers.update)
 
 module.exports = app => app.use(route)

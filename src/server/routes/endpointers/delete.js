@@ -10,8 +10,8 @@ route
   .delete('/auth/admin/produto/:id', productControllers.remove)
   .delete('/auth/admin/supermercado/:id', supermarketControllers.remove)
   .delete('/auth/admin/marca/:id', brandControllers.remove)
-  .delete('/auth/admin/gestor/:id', admControllers.removeAnotherAdm)
-  .delete('/auth/admin/notificacao/:id', pushNotificationControllers.remove)
+  .delete('/auth/admin/gestor/:id', admControllers.remove)
+  // .delete('/auth/admin/notificacao/:id', pushNotificationControllers.remove)
   // App
   .delete('/auth/app/observar/:id', watchControllers.remove)
   .delete('/auth/app/observacoes', watchControllers.removes)

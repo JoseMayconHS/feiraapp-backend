@@ -6,6 +6,11 @@ const jwt = require('jsonwebtoken'),
   algorithm = 'aes-256-ctr',
   iv = crypto.randomBytes(16)
 
+
+console.log(process.env.SECRET_KEY)
+console.log(process.env.WORD_SECRET)
+console.log(process.env.AUTHENTICATION_WORD)
+
 exports.hasEmpty = values => {
   let has = false
 
@@ -294,6 +299,8 @@ exports.authenticate_request = (req, res, next) => {
     // const content = contentBody || contentQuery
 
     const decrypted = this.decrypt({ iv, content })
+
+    console.log({ decrypted })
 
     // // console.log('next', decrypted === process.env.AUTHENTICATION_WORD)
 

@@ -475,7 +475,7 @@ exports.updatePrices = async ({
   finished, db,
   supermercado_id, supermercado_nome
 }) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const produto = await db.product.findOne({
       _id: new ObjectId(_id)
     }, { precos: 1, nivel: 1, nome: 1, peso: 1, sabor: 1 })
@@ -1373,7 +1373,7 @@ exports.indexBy = async (req, res) => {
           ...optionsMatch,
           ...filterMatch
         }
-      },
+      }
 
       if (body.no_page) {
 

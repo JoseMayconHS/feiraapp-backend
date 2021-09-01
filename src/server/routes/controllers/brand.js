@@ -216,7 +216,7 @@ exports.single = async (req, res) => {
 
 }
 
-exports.indexBy = (req, res) => {
+exports.indexBy = async (req, res) => {
   // OK
 
 	try {

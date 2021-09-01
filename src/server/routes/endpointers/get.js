@@ -30,10 +30,8 @@ route
 	.get('/auth/admin/marca/:id', brandControllers.single)
 	.get('/auth/app/marca/:id', brandControllers.single)
 	// Notificações
-	.get('/auth/admin/notifications', pushNotificationControllers.recents)
-	// Gestores
-	.get('/auth/admin/manager/:page', admControllers.indexAll)
+	// .get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// .get('/auth/admin/qtd/expo', userControllers.qtd)
-	.get('/auth/admin/cards', admControllers.cards)
+	// .get('/auth/admin/cards', admControllers.cards)
 
 module.exports = app => app.use(route)

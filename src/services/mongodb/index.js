@@ -9,6 +9,8 @@ module.exports = () => {
       if (err) {
         return resolve()
       }
+
+      console.log('Mongo conectado!')
   
       const db = client.db("app")
   
