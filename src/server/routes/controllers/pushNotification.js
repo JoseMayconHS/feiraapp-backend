@@ -60,3 +60,18 @@ exports.notify = async ({
   }
 }
 
+
+exports.test = async () => {
+  try {
+    await firebase.messaging()
+      .sendToDevice('czi7TjF9S02eanVHgykwJK:APA91bGI6f_abYLlFxNJjV1zvqy4H_zPNP5hktxcmADQcOe-Hs96uReDrBwWMjjdRqR6Zkeo342pExqEGbe3BSG3_i62tSJfT62mZfNGyMsqfiH4OGvX27ZxYnBVyGmb-YQOLhdgAwiu', {
+        notification: {
+          title: `${ 'Biscoito' }${ ' de morango' }${ ' 13un' } por ${ (1.45).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
+          body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - ${ 1 }/${ 9 } - ${ '10:55' }`
+        }
+      })
+  } catch(e) {
+    console.log(e)
+  }
+}
+

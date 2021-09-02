@@ -4,12 +4,8 @@ const jwt = require('jsonwebtoken'),
   numberFormatter = require('currency-formatter'),
   crypto = require('crypto'),
   algorithm = 'aes-256-ctr',
-  iv = crypto.randomBytes(16)
-
-
-console.log(process.env.SECRET_KEY)
-console.log(process.env.WORD_SECRET)
-console.log(process.env.AUTHENTICATION_WORD)
+  KEY = crypto.createHash('sha256').update(String(process.env.AUTHENTICATION_WORD)).digest('base64').substr(0, 32),
+  iv = Buffer(KEY).toString('hex').slice(0, 16)
 
 exports.hasEmpty = values => {
   let has = false
@@ -260,7 +256,7 @@ exports.criptor = password => {
 }
 
 exports.encrypt = (text) => {
-  const cipher = crypto.createCipheriv(algorithm, process.env.SECRET_KEY || '', iv);
+  const cipher = crypto.createCipheriv(algorithm, KEY, iv);
 
   const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
 
@@ -271,12 +267,16 @@ exports.encrypt = (text) => {
 };
 
 exports.decrypt = (hash) => {
-  const decipher = crypto.createDecipheriv(algorithm, process.env.SECRET_KEY || '', Buffer.from(hash.iv, 'hex'));
+  // const decipher = crypto.createDecipheriv(algorithm, KEY, Buffer.from(hash.iv, 'hex'));
+  const decipher = crypto.createDecipheriv(algorithm, KEY, hash.iv);
 
   const decrpyted = Buffer.concat([decipher.update(Buffer.from(hash.content, 'hex')), decipher.final()]);
 
   return decrpyted.toString();
 };
+
+console.log(this.encrypt(process.env.AUTHENTICATION_WORD))
+console.log(this.decrypt(this.encrypt(process.env.AUTHENTICATION_WORD)))
 
 exports.authenticate_request = (req, res, next) => {
   try {
@@ -291,18 +291,16 @@ exports.authenticate_request = (req, res, next) => {
     //   content: contentQuery
     // } = req.query
 
-    // const crypted = this.encrypt('GodisFaithful')
-
     // const decrypted = this.decrypt(crypted)
 
     // const iv = ivBody || ivQuery
     // const content = contentBody || contentQuery
 
+    console.log(req.headers)
+
     const decrypted = this.decrypt({ iv, content })
 
-    console.log({ decrypted })
-
-    // // console.log('next', decrypted === process.env.AUTHENTICATION_WORD)
+    console.log(decrypted)
 
     if (decrypted === process.env.AUTHENTICATION_WORD) {
       next()
@@ -310,7 +308,7 @@ exports.authenticate_request = (req, res, next) => {
       res.status(401).send()
     }
   } catch(e) {
-    // console.log(e)
+    console.log(e)
     res.status(500).send()
   }
 }
