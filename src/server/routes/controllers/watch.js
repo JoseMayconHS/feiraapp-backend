@@ -66,7 +66,8 @@ exports._update = async ({
   data, hash_identify_device = ''
 }) => {
   try {
-    // console.log('watch._update', data)
+    console.log('watch._update', data)
+
 
   } catch(e) {
     console.error(e)
@@ -149,7 +150,7 @@ exports.removes = async (req, res) => {
   try {
     let { ids = [] } = req.headers
 
-    ids = ids.map(id => new ObjectId(id))
+    ids = ids.map(_id => new ObjectId(_id))
 
     if (ids.length) {
       await req.db.watch.deleteMany({
@@ -164,6 +165,40 @@ exports.removes = async (req, res) => {
 
   } catch(e) {
     console.error('watch.removes catch', e)
+    res.status(500).send()
+  }
+}
+
+exports.updateLocale = async (req, res) => {
+  try {
+    console.log('watch.updateLocale', req.body)
+
+    const { ids, local } = req.body
+
+    await req.db.watch.updateMany({
+      _id: {
+        $in: ids.map(_id => new ObjectId(_id))
+      }
+    }, {
+      $set: {
+        local: {
+          cidade: {
+            cache_id: local.cidade._id,
+            nome: local.cidade.nome,
+            estado_id: local.cidade.estado_id
+          },
+          estado: {
+            cache_id: local.estaco._id,
+            nome: local.estado.nome,
+            sigla: local.estado.sigla
+          }
+        }
+      }
+    })
+
+    res.status(200).send()
+  } catch(e) {
+    console.log(e)
     res.status(500).send()
   }
 }

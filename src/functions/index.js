@@ -275,9 +275,6 @@ exports.decrypt = (hash) => {
   return decrpyted.toString();
 };
 
-console.log(this.encrypt(process.env.AUTHENTICATION_WORD))
-console.log(this.decrypt(this.encrypt(process.env.AUTHENTICATION_WORD)))
-
 exports.authenticate_request = (req, res, next) => {
   try {
 
@@ -296,11 +293,7 @@ exports.authenticate_request = (req, res, next) => {
     // const iv = ivBody || ivQuery
     // const content = contentBody || contentQuery
 
-    console.log(req.headers)
-
     const decrypted = this.decrypt({ iv, content })
-
-    console.log(decrypted)
 
     if (decrypted === process.env.AUTHENTICATION_WORD) {
       next()
