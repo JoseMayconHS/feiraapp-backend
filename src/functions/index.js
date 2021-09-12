@@ -154,12 +154,12 @@ exports.capitalize = (val) => {
   return val.charAt(0).toUpperCase() + val.substring(1).toLowerCase()
 }
 
-exports.token = _id => {
+exports.token = payload => {
   return new Promise((resolve, reject) => {
     try {
       const exp = Math.floor((Date.now() / 1000) + (60 * 60 * 24 * 7))
 
-      jwt.sign({ _id, exp }, process.env.WORD_SECRET || 'feiraapp', (err, token) => {
+      jwt.sign({ payload, exp }, process.env.WORD_SECRET || 'feiraapp', (err, token) => {
         if (err)
           return reject()
   
@@ -186,36 +186,6 @@ exports.verifyToken = token => {
   })
 }
 
-exports.authenticate_user = (req, res, next) => {
-  try {
-
-    const { authorization } = req.headers
-
-    if (authorization.split(' ').length !== 2)
-      throw 'Token mal formatado'
-
-    const [ Bearer, hash ] = authorization.split(' ')
-
-    if (!/^Bearer$/.test(Bearer))
-      throw 'Token não é desta aplicação'
-
-    this.verifyToken(hash)  
-      .then(decoded => {
-        req._id = decoded._id
-
-        if (decoded._id.adm) req.adm = true
-
-        next()
-      })
-      .catch(() => {
-        res.status(401).send()
-      })
-
-  } catch(e) {
-    res.status(500).send(e)
-  }
-}
-
 exports.authenticate_adm = (req, res, next) => {
   try {
 
@@ -231,20 +201,16 @@ exports.authenticate_adm = (req, res, next) => {
 
     this.verifyToken(hash)  
       .then(decoded => {
-        if (decoded._id.adm) {
-          req._id = decoded._id.value
-          req.adm = true
+        req.payload = decoded.payload
 
-          return next()
-        }
-        
-        res.status(401).send()
+        return next()
       })
       .catch(() => {
         res.status(401).send()
       })
 
   } catch(e) {
+    console.log(e)
     res.status(401).send(e)
   }
 }

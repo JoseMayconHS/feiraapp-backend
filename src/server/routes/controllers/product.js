@@ -79,13 +79,14 @@ exports.save = async ({
     const item = {
       nome, nome_key: functions.keyWord(nome), 
       sem_marca, cache_id, hash_identify_device, precos, status, nivel, peso,
-      tipo,
+      tipo, sabor: { definido: false },
       created_at: Date.now()
     }
 
     if (sabor.definido) {
       sabor.nome = functions.capitalize(sabor.nome)
       sabor.nome_key = functions.keyWord(sabor.nome)
+      sabor.definido = true
 
       item.sabor = sabor
     }
@@ -676,7 +677,8 @@ exports.index = async (req, res) => {
     const { page = 1 } = req.params
 
     let {
-      limit: limitQuery
+      limit: limitQuery,
+      nome = '', nivel
     } = req.query
 
     if (!limitQuery) {
@@ -688,6 +690,38 @@ exports.index = async (req, res) => {
         created_at: -1
       }
     }]
+
+    if (nome.length || nivel) {
+
+      const $match = {}
+
+      if (nome.length) {
+        const regex = new RegExp(functions.keyWord(nome))
+
+        $match.nome_key = {
+          $regex: regex, $option: 'gi'
+        }
+      }
+
+      if (nivel) {
+        $match.nivel = nivel
+      }
+
+      options.unshift({
+        $match
+      })
+    }
+
+    options.push({
+      $group: {
+        _id: '$_id',
+        doc: { $first: "$$ROOT" }
+      }
+    }, {
+      $replaceRoot: {
+        newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
+      }
+    })
 
     const optionsPaginated = [{
       $skip: (limitQuery * page) - limitQuery
@@ -706,6 +740,8 @@ exports.index = async (req, res) => {
         count: 1
       }
     }]
+
+    console.log(options)
 
     const [{ documents, postsCounted }] = await req.db.product.aggregate([{
       $facet: {

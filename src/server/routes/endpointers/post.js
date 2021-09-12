@@ -42,7 +42,6 @@ route
 	// Dashboard
 	.post('/dashboard/signin', admControllers.sign)
 	.post('/dashboard/signup', admControllers.store)
-	.post('/auth/admin/reconnect', admControllers.reconnect)
 	.post('/auth/admin/marca', brandControllers.store)
 	// Do cache para a api
 	.post('/auth/app/cache/produto', _defaultsControllers.store(productControllers.save))

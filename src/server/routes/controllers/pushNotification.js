@@ -1,14 +1,15 @@
-const functions = require('../../../functions'),
+const { ObjectId } = require('mongodb'),
+  functions = require('../../../functions'),
   firebase = require('../../../services/firebase')
 
 exports.notify = async ({ 
-  _id, preco, local, supermercado_id, moment, db,
+  _id, preco_u, local, supermercado_id, moment, db,
   produto_nome = '', produto_sabor = '', produto_peso = '', 
   supermercado_nome = ''
 }) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
-    console.log('notify', { _id, preco, local, supermercado_id, moment, produto_nome, supermercado_nome })
+    console.log('notify', { _id, preco_u, local, supermercado_id, moment, produto_nome, supermercado_nome })
 
     if (functions.hasEmpty({
       produto_nome, supermercado_nome
@@ -30,10 +31,12 @@ exports.notify = async ({
           $in: [local.cidade.cache_id, 0]
         },
         valor: {
-          $lt: ['$valor', +preco]
+          $lt: ['$valor', +preco_u]
         }
       }
     }]).toArray()
+
+    console.log({ watches })
 
     const stack = watches.map(watch => ({
       async fn() {
@@ -43,7 +46,7 @@ exports.notify = async ({
               data: {
                 produto_id: _id
               }, notification: {
-                title: `${ produto_nome }${ produto_nome.sabor.definido ? ` de ${ produto_sabor.nome }` : '' }${ functions.getWeight(produto_peso) } por ${ (preco).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
+                title: `${ produto_nome }${ produto_nome.sabor.definido ? ` de ${ produto_sabor.nome }` : '' }${ functions.getWeight(produto_peso) } por ${ (preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
                 body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia }/${ moment.mes } - ${ moment.hora }`
               }
             })

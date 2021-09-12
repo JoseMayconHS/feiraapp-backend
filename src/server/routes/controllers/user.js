@@ -83,10 +83,10 @@ exports.finishShopping = async (req, res) => {
         const props = req.body.products
     
         const {
-          data = [], local, moment, campo, supermercado_id, finished
+          data = [], local, moment, campo, supermercado_id, supermercado_nome, finished
         } = props
     
-        // console.log('updateMany', req.body)
+        console.log('updateMany', req.body)
     
         const updates = data.map(({ produto_id, data }) => ({
           async fn() {
@@ -95,8 +95,8 @@ exports.finishShopping = async (req, res) => {
               if (campo == 'precos') {
                 await productControllers.updatePrices({
                   _id: produto_id._id,
-                  local, moment, preco_u: data.preco_u, supermercado_id, finished,
-                  db: req.db
+                  local, moment, preco_u: data.preco_u, supermercado_id, supermercado_nome, 
+                  finished, db: req.db
                 })
               }
     

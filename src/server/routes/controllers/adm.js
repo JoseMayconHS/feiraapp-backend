@@ -131,7 +131,6 @@ exports.store = async (req, res) => {
       
       const { insertedId } = await req.db.adm.insertOne({ ...data, created_at: Date.now() })
 
-      // const document = await req.db.adm.findOne({ _id: insertedId }, { projection: { password: 0 } })
       const document = {
         _id: insertedId,
         ...data,
@@ -215,7 +214,7 @@ exports.sign = async (req, res) => {
       }
 
       const token = await functions
-        .token({ adm: true, _id: adm._id, level: adm.level })
+        .token({ _id: adm._id })
 
         res.status(200)
           .json({

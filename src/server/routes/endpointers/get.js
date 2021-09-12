@@ -16,6 +16,7 @@ const html = `
 route
 	.get('/__origin__', (req, res) => res.send(html))
 	.get('/already', admControllers.qtd)
+	.get('/auth/admin/reconnect', admControllers.reconnect)
 	// Produto
 	.get('/auth/admin/produto/:page', productControllers.index)
 	.get('/auth/admin/produto/todos', productControllers.all)

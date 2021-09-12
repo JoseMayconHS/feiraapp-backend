@@ -73,9 +73,9 @@
 			"default": "1"
 		},
 		"force_down": {
-      "type": "bool",
-      "default": false
-    }
+			"type": "bool",
+			"default": false
+		}
 	},
 	"precos": {
 		"type": [{
