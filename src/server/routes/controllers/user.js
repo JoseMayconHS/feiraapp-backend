@@ -95,7 +95,8 @@ exports.finishShopping = async (req, res) => {
               if (campo == 'precos') {
                 await productControllers.updatePrices({
                   _id: produto_id._id,
-                  local, moment, preco_u: data.preco_u, supermercado_id, finished
+                  local, moment, preco_u: data.preco_u, supermercado_id, finished,
+                  db: req.db
                 })
               }
     
@@ -114,7 +115,10 @@ exports.finishShopping = async (req, res) => {
 
     const stepSupermarkets = async () => {
       try {
-        await supermarketControllers.updateProducts(req.body.supermarkets)
+        await supermarketControllers.updateProducts({
+          ...req.body.supermarkets,
+          db: req.db
+        })
       } catch(e) {
         console.error(e)
       }

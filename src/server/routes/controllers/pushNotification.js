@@ -64,12 +64,15 @@ exports.notify = async ({
 exports.test = async () => {
   try {
     await firebase.messaging()
-      .sendToDevice('czi7TjF9S02eanVHgykwJK:APA91bGI6f_abYLlFxNJjV1zvqy4H_zPNP5hktxcmADQcOe-Hs96uReDrBwWMjjdRqR6Zkeo342pExqEGbe3BSG3_i62tSJfT62mZfNGyMsqfiH4OGvX27ZxYnBVyGmb-YQOLhdgAwiu', {
+      .sendToDevice('fBffx8s0SbuKedEoo1C3vb:APA91bFQVEGPaG6DRo7cPhsXFELsz5HAH0WQSAgoYm1sabiqOQtqlyc2foAMEv1gOHYFsZ-BeSTfMRIJK9tkmljclXlmHpsohRVmJGBwoCdOc5ZPi3ImvfiSTaRVH7Zj8jyRO72AD1iK', {
         notification: {
           title: `${ 'Biscoito' }${ ' de morango' }${ ' 13un' } por ${ (1.45).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
           body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - ${ 1 }/${ 9 } - ${ '10:55' }`
+        }, data: {
+          produto_id: '1'
         }
       })
+    console.log('Notificação de teste')
   } catch(e) {
     console.log(e)
   }

@@ -29,7 +29,10 @@ exports.store = async (req, res) => {
     } else {
       try {
 
-        const data = { nome, descricao, cache_id, hash_identify_device, created_at: Date.now() }
+        const data = { 
+          nome, nome_key: functions.keyWord(nome), descricao, 
+          cache_id, hash_identify_device, created_at: Date.now() 
+        }
 
         const { insertedId } = await req.db.brand.insertOne(data)
 
@@ -118,14 +121,16 @@ exports.index = async (req, res) => {
       limitQuery = limit
     }
 
+    const find = {}
+
     if (nome.length) {
       const name_regex = new RegExp(functions.keyWord(body.where.nome))
 
-      where.nome_key = { $regex: name_regex, $options: 'g' }
+      find.nome_key = { $regex: name_regex, $options: 'g' }
     }
 
     const options = [{
-      $match: where
+      $match: find
     }, {
       $sort: {
         created_at: -1
@@ -222,7 +227,7 @@ exports.indexBy = async (req, res) => {
 	try {
     let { where = {} } = req.body
 
-    const { page = 1 } = req.params
+    let { page = 1 } = req.params
 
     page = +page
 
@@ -239,7 +244,7 @@ exports.indexBy = async (req, res) => {
     if (where.nome.length) {
       const name_regex = new RegExp(functions.keyWord(where.nome))
 
-      where.nome_key = { $regex: name_regex, $options: 'g' }
+      find.nome_key = { $regex: name_regex, $options: 'g' }
     }
 
     const options = [{

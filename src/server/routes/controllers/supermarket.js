@@ -24,7 +24,8 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
     }
     
     const item = {
-      nome, cache_id, hash_identify_device, status, nivel,
+      nome, nome_key: functions.keyWord(nome),
+      cache_id, hash_identify_device, status, nivel,
       produtos: produtos.map(produto => ({
         ...produto,
         produto_id: {
@@ -602,6 +603,7 @@ exports.single = async (req, res) => {
         res.status(200).json({ ok: true, data })
 
       } else {
+        console.log('Supermercado não aprovado ou interagido')
         res.status(400).send()
       }
 

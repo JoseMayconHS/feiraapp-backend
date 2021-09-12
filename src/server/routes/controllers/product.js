@@ -98,7 +98,7 @@ exports.save = async ({
     // }
 
     item.marca_id = {
-      _id: new ObjectId(data_marca ? data_marca._id : ''),
+      _id: data_marca && data_marca._id ? new ObjectId(data_marca._id) : '',
       cache_id: 0
     }
 
@@ -193,6 +193,8 @@ exports.save = async ({
 
       return { ...response, ...updateData }
     } else {
+
+      console.log(item)
 
       const { insertedId } = await db.product.insertOne(item)
 
@@ -395,7 +397,7 @@ exports._update = async ({
               menor_preco: price.menor_preco,
               maior_preco: price.maior_preco || { 
                 supermercado_id: {
-                  _id: new ObjectId(''),
+                  _id: '',
                   cache_id: 0
                 },
                 preco_u: '0' 
@@ -435,7 +437,7 @@ exports._update = async ({
                 menor_preco: price.menor_preco,
                 maior_preco: price.maior_preco || { 
                   supermercado_id: {
-                    _id: new ObjectId(''),
+                    _id: '',
                     cache_id: 0
                   },
                   preco_u: '0' 
@@ -561,7 +563,7 @@ exports.updatePrices = async ({
 
             const maior_preco = {
               supermercado_id: {
-                _id: new ObjectId(''),
+                _id: '',
                 cache_id: 0
               }, preco_u: '0' 
             }
@@ -590,7 +592,7 @@ exports.updatePrices = async ({
 
           const maior_preco = {
             supermercado_id: {
-              _id: new ObjectId(''),
+              _id: '',
               cache_id: 0
             }, preco_u: '0' 
           }
@@ -785,7 +787,7 @@ exports.all = async (req, res) => {
         preco_u: '0',
         supermercado_id: {
           cache_id: 0,
-          _id: new ObjectId('')
+          _id: ''
         }
       }
 
@@ -986,6 +988,7 @@ exports.single = async (req, res) => {
       }
 
     } else {
+      console.log('Produto não aprovado ou interagido')
       res.status(400).send()
     }
 			
