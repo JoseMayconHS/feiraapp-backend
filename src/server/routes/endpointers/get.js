@@ -18,18 +18,19 @@ route
 	.get('/already', admControllers.qtd)
 	.get('/auth/admin/reconnect', admControllers.reconnect)
 	// Produto
-	.get('/auth/admin/produto/:page', productControllers.index)
+	.get('/auth/admin/produtos/:page', productControllers.index)
 	.get('/auth/admin/produto/todos', productControllers.all)
 	.get('/auth/app/produto/interna/:id', productControllers.single)
 	.get('/auth/admin/produto/interna/:id', productControllers.single)
 	// Supermercado
 	.get('/auth/app/supermercado/:id', supermarketControllers.single)
 	.get('/auth/app/supermercados/:page', supermarketControllers.index)
-	.get('/auth/app/marcas/:page', brandControllers.index)
 	.get('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Marca
 	.get('/auth/admin/marca/:id', brandControllers.single)
+	.get('/auth/admin/marcas/:page', brandControllers.index)
 	.get('/auth/app/marca/:id', brandControllers.single)
+	.get('/auth/app/marcas/:page', brandControllers.index)
 	// Notificações
 	// .get('/auth/admin/notifications', pushNotificationControllers.recents)
 	// .get('/auth/admin/qtd/expo', userControllers.qtd)

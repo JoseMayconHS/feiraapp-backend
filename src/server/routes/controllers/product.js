@@ -16,6 +16,7 @@ exports.save = async ({
     } = data
 
     console.log('product.save()', data)
+    console.log(db)
 
     const { tipo: peso_tipo } = peso
 
@@ -60,7 +61,7 @@ exports.save = async ({
           }, { projection: { nome: 1 } })
 
           if (!data_marca) {
-            const { insertedId } = await db.brand.insetOne({
+            const { insertedId } = await db.brand.insertOne({
               nome: marca_obj.nome,
               nome_key: functions.keyWord(marca_obj.nome)
             })
@@ -674,7 +675,9 @@ exports.index = async (req, res) => {
   // OK
 
   try {
-    const { page = 1 } = req.params
+    let { page = 1 } = req.params
+
+    page = +page
 
     let {
       limit: limitQuery,
@@ -699,12 +702,12 @@ exports.index = async (req, res) => {
         const regex = new RegExp(functions.keyWord(nome))
 
         $match.nome_key = {
-          $regex: regex, $option: 'gi'
+          $regex: regex, $options: 'gi'
         }
       }
 
       if (nivel) {
-        $match.nivel = nivel
+        $match.nivel = +nivel
       }
 
       options.unshift({
@@ -720,6 +723,13 @@ exports.index = async (req, res) => {
     }, {
       $replaceRoot: {
         newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
+      }
+    }, {
+      $lookup: {
+        from: 'brand',
+        foreignField: '_id',
+        localField: 'marca_id._id',
+        as: 'marca_obj'
       }
     })
 
@@ -740,8 +750,6 @@ exports.index = async (req, res) => {
         count: 1
       }
     }]
-
-    console.log(options)
 
     const [{ documents, postsCounted }] = await req.db.product.aggregate([{
       $facet: {
@@ -765,6 +773,7 @@ exports.index = async (req, res) => {
     res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
 
   } catch(err) {
+    console.log(err)
     res.status(500).send()
   }
 }
@@ -1546,6 +1555,8 @@ exports.update = async (req, res) => {
       }
 
     } else {
+      delete req.body._id
+
       await req.db.product.updateOne({
         _id: new ObjectId(id)
       }, {

@@ -274,40 +274,61 @@ exports.index = async (req, res) => {
   try {
 
     const { where, undefineds = [] } = req.body
-    const { page = 1 } = req.params
-    let { limit: limitQuery } = req.query
+    let { page = 1 } = req.params
+
+    page = +page
+
+    let { 
+      limit: limitQuery,
+      nome = '', nivel
+    } = req.query
 
     if (!limitQuery) {
       limitQuery = limit
     }
 
-    // console.log({ where })
+    let $match = {}
 
-    let find = {}
+    if (nome.length || nivel) {
+
+      if (nome.length) {
+        const regex = new RegExp(functions.keyWord(nome))
+
+        $match.nome_key = {
+          $regex: regex, $options: 'gi'
+        }
+      }
+
+      if (nivel) {
+        $match.nivel = +nivel
+      }
+    }
     
     if (where) {
       if (where.nome) {
         const regex = new RegExp(functions.keyWord(where.nome))
 
-        find.nome_key = { $regex: regex, $options: 'g' }
+        $match.nome_key = { $regex: regex, $options: 'gi' }
       }
 
       if (where.favorito) {
-        find._id = {
-          $in: where.favoritos_ids ? where.favoritos_ids.map(_id => new ObjectId(_id)) : []
+        $match._id = {
+          $in: where.favoritos_ids ? where.favoritos_ids.filter(v => v.length).map(_id => new ObjectId(_id)) : []
         }
       }
 
-      find['local.estado.cache_id'] = where.local_estado_id
-      find['local.cidade.cache_id'] = where.local_cidade_id
+      $match['local.estado.cache_id'] = where.local_estado_id
+      $match['local.cidade.cache_id'] = where.local_cidade_id
     }
 
-    find.nivel = {
-      $in: [1, 2]
+    if (!req.payload) {
+      $match.nivel = {
+        $in: [1, 2]
+      }
     }
 
     const options = [{
-      $match: find
+      $match
     }, {
       $sort: {
         created_at: -1
@@ -360,16 +381,15 @@ exports.index = async (req, res) => {
       count = postsCounted[0].count
     }
 
-    let data = documents.map(doc => ({
-      ...doc,
-      produtos: []
-    }))
+    let data = [ ...documents ]
 
-    data = functions.setUndefineds({
-      data, undefineds
-    })
+    if (undefineds.length) {
+      data = functions.setUndefineds({
+        data, undefineds
+      })
+    }
 
-    res.status(200).json({ ok: true, data, count, limit: limitQuery })
+    res.status(200).json({ ok: true, data, count, limit: limitQuery, page })
   } catch(err) {
     console.error(err)
     res.status(500).send()
@@ -728,6 +748,7 @@ exports.update = async (req, res) => {
         await this.updateProducts({ _id, data, db: req.db })
         break
       default :
+        delete req.body._id
         // (END) SE ATENTAR SE ObjectIds NÃO ESTÃO SENDO SOBRESCRITOS
         await req.db.supermarket.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
     }

@@ -35,17 +35,17 @@
 	"produtos": {
 		"type": [{
 			"produto_id": {
-        "type": {
-          "cache_id": {
-            "type": "Number",
-            "default": 0
-          },
-          "_id": {
-            "type": "String",
-            "default": ""
-          }
-        }
-      },
+				"type": {
+					"cache_id": {
+						"type": "Number",
+						"default": 0
+					},
+					"_id": {
+						"type": "String",
+						"default": ""
+					}
+				}
+			},
 			"preco_u": {
 				"type": "String",
 				"required": true
@@ -60,17 +60,17 @@
 		"default": []
 	},
 	"local": {
-    "type": {
-      "estado": {
-        "cache_id": "Number",
-        "nome": "String",
-        "sigla": "String",
-      },
-      "cidade": {
-        "estado_id": "Number",
-        "cache_id": "Number",
-        "nome": "String",
-      }
-    }
-  },
+		"type": {
+			"estado": {
+				"cache_id": "Number",
+				"nome": "String",
+				"sigla": "String"
+			},
+			"cidade": {
+				"estado_id": "Number",
+				"cache_id": "Number",
+				"nome": "String"
+			}
+		}
+  	}
 }

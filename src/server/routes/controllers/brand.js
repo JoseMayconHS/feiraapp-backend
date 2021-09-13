@@ -110,7 +110,7 @@ exports.index = async (req, res) => {
   try {
     let {
       limit: limitQuery,
-      nome = ''
+      nome = '', nivel
     } = req.query
 
     let { page = 1 } = req.params
@@ -121,19 +121,28 @@ exports.index = async (req, res) => {
       limitQuery = limit
     }
 
-    const find = {}
+    const $match = {}
 
     if (nome.length) {
       const name_regex = new RegExp(functions.keyWord(body.where.nome))
 
-      find.nome_key = { $regex: name_regex, $options: 'g' }
+      $match.nome_key = { $regex: name_regex, $options: 'g' }
+    }
+
+    if (nivel) {
+      $match.nivel = +nivel
     }
 
     const options = [{
-      $match: find
+      $match
     }, {
       $sort: {
         created_at: -1
+      }
+    }, {
+      $project: {
+        nome: 1,
+        descricao: 1
       }
     }]
 
@@ -239,16 +248,16 @@ exports.indexBy = async (req, res) => {
       limitQuery = limit
     }
 
-    const find = {}
+    const $match = {}
 
     if (where.nome.length) {
       const name_regex = new RegExp(functions.keyWord(where.nome))
 
-      find.nome_key = { $regex: name_regex, $options: 'g' }
+      $match.nome_key = { $regex: name_regex, $options: 'g' }
     }
 
     const options = [{
-      $match: find
+      $match
     }, {
       $sort: {
         created_at: -1
@@ -308,6 +317,8 @@ exports.update = async (req, res) => {
   try {
 
     const { id } = req.params
+
+    delete req.body._id
 
     await req.db.brand.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
 

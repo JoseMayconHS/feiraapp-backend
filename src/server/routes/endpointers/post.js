@@ -14,12 +14,12 @@ route
 	.post('/auth/app/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	.post('/auth/app/supermercados', _defaultsControllers.storeList({ save: supermarketControllers.save, update: supermarketControllers._update }))
 	.post('/auth/app/baixar/supermercado', supermarketControllers.all)
+	// .post('/auth/admin/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	// Buscar sem produtos
 	.post('/auth/app/supermercado/:id', supermarketControllers.single)
 	.post('/auth/admin/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	// Supermercado (Buscar por localizacao)
 	.post('/auth/app/supermercados/:page', supermarketControllers.index)
-	.post('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Observar
 	.post('/auth/app/observar', _defaultsControllers.store(watchControllers.save))
 	.post('/auth/app/observacoes', _defaultsControllers.storeList({ save: watchControllers.save, update: watchControllers._update }))

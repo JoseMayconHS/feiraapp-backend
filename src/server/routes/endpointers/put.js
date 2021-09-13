@@ -1,5 +1,6 @@
 const route = require('express').Router(),
 	productControllers = require('../controllers/product'),
+	brandControllers = require('../controllers/brand'),
 	supermarketControllers = require('../controllers/supermarket'),
 	userControllers = require('../controllers/user'),
 	watchControllers = require('../controllers/watch'),
@@ -13,6 +14,8 @@ route
 	.put('/auth/app/observacoes', watchControllers.updateLocale)
 	// Dashboard
 	.put('/auth/admin/produto/:id', productControllers.update)
+	.put('/auth/admin/marca/:id', brandControllers.update)
+	.put('/auth/admin/supermercado/:id', supermarketControllers.update)
 	// Ambos
 	.put('/auth/admin/produto/:id', productControllers.update)
 
