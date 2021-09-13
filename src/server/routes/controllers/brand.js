@@ -109,7 +109,7 @@ exports.index = async (req, res) => {
 
   try {
     let {
-      limit: limitQuery,
+      limit: limitQuery, all,
       nome = '', nivel
     } = req.query
 
@@ -124,7 +124,8 @@ exports.index = async (req, res) => {
     const $match = {}
 
     if (nome.length) {
-      const name_regex = new RegExp(functions.keyWord(body.where.nome))
+      // const name_regex = new RegExp(functions.keyWord(body.where.nome))
+      const name_regex = new RegExp(functions.keyWord(nome))
 
       $match.nome_key = { $regex: name_regex, $options: 'g' }
     }
@@ -164,26 +165,36 @@ exports.index = async (req, res) => {
       }
     }]
 
-    const [{ documents, postsCounted }] = await req.db.brand.aggregate([{
-      $facet: {
-        documents: [
-          ...options,
-          ...optionsPaginated
-        ],
-        postsCounted: [
-          ...options,
-          ...optionsCounted
-        ]   
-      }
-    }]).toArray()
-    
+    let response = []
+
     let count = 0
 
-    if (postsCounted.length) {
-      count = postsCounted[0].count
+    if (all) {
+      response = await req.db.brand.aggregate([
+        ...options
+      ]).toArray()
+    } else {
+      const [{ documents, postsCounted }] = await req.db.brand.aggregate([{
+        $facet: {
+          documents: [
+            ...options,
+            ...optionsPaginated
+          ],
+          postsCounted: [
+            ...options,
+            ...optionsCounted
+          ]   
+        }
+      }]).toArray()    
+  
+      if (postsCounted.length) {
+        count = postsCounted[0].count
+      }
+
+      response = documents
     }
 
-    res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
+    res.status(200).json({ ok: true, data: response, limit: limitQuery, count, page })
 
   } catch(err) {
     console.error(err)

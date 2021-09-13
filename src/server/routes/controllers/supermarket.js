@@ -280,7 +280,8 @@ exports.index = async (req, res) => {
 
     let { 
       limit: limitQuery,
-      nome = '', nivel
+      nome = '', nivel,
+      cidade_id, estado_id
     } = req.query
 
     if (!limitQuery) {
@@ -302,6 +303,11 @@ exports.index = async (req, res) => {
       if (nivel) {
         $match.nivel = +nivel
       }
+    }
+
+    if (cidade_id && estado_id) {
+      $match['local.estado.cache_id'] = +estado_id
+      $match['local.cidade.cache_id'] = +cidade_id
     }
     
     if (where) {
@@ -748,9 +754,20 @@ exports.update = async (req, res) => {
         await this.updateProducts({ _id, data, db: req.db })
         break
       default :
-        delete req.body._id
-        // (END) SE ATENTAR SE ObjectIds NÃO ESTÃO SENDO SOBRESCRITOS
-        await req.db.supermarket.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
+      
+        const body = req.body
+        
+        delete body._id
+
+        if (body.nome) {
+          body.nome_key = functions.keyWord(body.nome)
+        }
+
+        if (body.nivel) {
+          body.nivel = +body.nivel
+        }
+
+        await req.db.supermarket.updateOne({ _id: new ObjectId(id) }, { $set: body })
     }
 
     res.status(200).send()

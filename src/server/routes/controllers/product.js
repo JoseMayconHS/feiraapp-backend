@@ -1555,12 +1555,59 @@ exports.update = async (req, res) => {
       }
 
     } else {
-      delete req.body._id
+      const data = req.body
+      delete data._id
+      delete data.marca
+
+      if (data.marca_id) {
+        data.marca_id = {
+          _id: new ObjectId(data.marca_id._id),
+          cache_id: 0
+        }
+
+        data.sem_marca = false
+      }
+
+      const sem_marca = !(data.marca && data.marca.nome.length)
+    
+      if (!sem_marca) {
+        const marca_nome = data.marca.nome
+
+        let data_marca = await db.brand.findOne({
+          nome_key: functions.keyWord(marca_nome)
+        }, { projection: { nome: 1 } })
+
+        if (!data_marca) {
+          const { insertedId } = await db.brand.insertOne({
+            nome: marca_nome,
+            nome_key: functions.keyWord(marca_nome)
+          })
+
+          data_marca = {
+            _id: insertedId
+          }
+
+        } 
+
+        data.marca_id = {
+          _id: data_marca._id,
+          cache_id: 0
+        }
+
+        data.sem_marca = sem_marca
+      }
+
+      if (data.sabor && data.sabor.nome.length) {
+        data.sabor = {
+          nome: data.sabor.nome, nome_key: functions.keyWord(data.sabor.nome),
+          definido: true
+        }
+      }
 
       await req.db.product.updateOne({
         _id: new ObjectId(id)
       }, {
-        $set: req.body
+        $set: data
       })
 
       res.status(200).send()
