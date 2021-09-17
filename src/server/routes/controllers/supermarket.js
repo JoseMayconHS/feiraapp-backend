@@ -422,11 +422,16 @@ exports.all = async (req, res) => {
 
   const { uf, mn } = locale
 
+  console.log({
+    supermarcekAll: {
+      locale, noIds
+    }
+  })
+
   try {
 
     const documents = await req.db.supermarket.aggregate([{
       $match: {
-        ...where,
         nivel: {
           $in: [1, 2]
         },
@@ -508,9 +513,12 @@ exports.single = async (req, res) => {
               foreignField: '_id',
               as: 'marca_obj'
             }
-          }, {
-            $unwind: '$marca_obj'
-          }]).toArray()
+          }, 
+          // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
+          // {
+          //   $unwind: '$marca_obj'
+          // }
+        ]).toArray()
 
           fulls = documents
         }

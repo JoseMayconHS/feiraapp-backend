@@ -16,7 +16,6 @@ exports.save = async ({
     } = data
 
     console.log('product.save()', data)
-    console.log(db)
 
     const { tipo: peso_tipo } = peso
 
@@ -79,7 +78,7 @@ exports.save = async ({
 
     const item = {
       nome, nome_key: functions.keyWord(nome), 
-      sem_marca, cache_id, hash_identify_device, precos, status, nivel, peso,
+      sem_marca, cache_id, hash_identify_device, precos, status, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
       tipo, sabor: { definido: false },
       created_at: Date.now()
     }
@@ -784,7 +783,7 @@ exports.all = async (req, res) => {
 
   const { status } = req.query
 
-  const { locale, noIds = [] } = req.body
+  const { locale, noIds = [], enable_prices } = req.body
 
   const where = {}
 
@@ -798,11 +797,17 @@ exports.all = async (req, res) => {
 
   const { uf, mn } = locale
 
+
+  console.log({
+    productAll: {
+      locale, noIds, enable_prices
+    }
+  })
+
   try {
 
-    let documents = await req.db.supermarket.aggregate([{
+    let documents = await req.db.product.aggregate([{
       $match: {
-        ...where,
         nivel: {
           $in: [1]
         },
@@ -821,10 +826,16 @@ exports.all = async (req, res) => {
           foreignField: '_id',
           as: 'marca_obj'
         }
-      }, {
-        $unwind: '$marca_obj'
-      }
+      }, 
+      // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
+      // {
+      //   $unwind: '$marca_obj'
+      // }
     ]).toArray()
+
+    console.log({
+      documents
+    })
 
     documents = documents.map(document => {
 
@@ -861,7 +872,7 @@ exports.all = async (req, res) => {
       }
 
       // (END) LOGICA DE ENTREGAR OU NÃO OS PREÇOS JÁ REGISTRADOS
-      document.precos = []
+      document.precos = enable_prices ? [response] : []
 
       return document
     })
@@ -1369,11 +1380,14 @@ exports.indexBy = async (req, res) => {
           }],
           as: 'notificacao'
         }
-      }, {
-        $unwind: 'marca_obj'
-      }, {
-        $unwind: 'notificacao'
-      }, {
+      }, 
+      // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
+      // {
+      //   $unwind: '$marca_obj'
+      // }, {
+      //   $unwind: '$notificacao'
+      // }, 
+      {
         $group: {
           _id: '$_id',
           doc: { $first: '$$ROOT' }

@@ -19,7 +19,7 @@ require('./routes/controllers/pushNotification').test()
 
 app.use('/', (req, res, next) => {
   req.db = db
-
+  console.log(req.url)
   next()
 })
 
