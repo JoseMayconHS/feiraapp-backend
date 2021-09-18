@@ -47,7 +47,7 @@ exports.notify = async ({
                 produto_id: _id
               }, notification: {
                 title: `${ produto_nome }${ produto_nome.sabor.definido ? ` de ${ produto_sabor.nome }` : '' }${ functions.getWeight(produto_peso) } por ${ (preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
-                body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia }/${ moment.mes } - ${ moment.hora }`
+                body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia< 10 ? `0${ moment.dia }` : moment.dia }/${ moment.mes < 10 ? `0${ moment.mes }` : moment.mes } - ${ moment.hora }`
               }
             })
         } catch(e) {
@@ -70,7 +70,7 @@ exports.test = async () => {
       .sendToDevice('fBffx8s0SbuKedEoo1C3vb:APA91bFQVEGPaG6DRo7cPhsXFELsz5HAH0WQSAgoYm1sabiqOQtqlyc2foAMEv1gOHYFsZ-BeSTfMRIJK9tkmljclXlmHpsohRVmJGBwoCdOc5ZPi3ImvfiSTaRVH7Zj8jyRO72AD1iK', {
         notification: {
           title: `${ 'Biscoito' }${ ' de morango' }${ ' 13un' } por ${ (1.45).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
-          body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - ${ 1 }/${ 9 } - ${ '10:55' }`
+          body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - 01/09 - ${ '10:55' }`
         }, data: {
           produto_id: '1'
         }

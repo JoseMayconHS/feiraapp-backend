@@ -421,13 +421,7 @@ exports.all = async (req, res) => {
   }
 
   const { uf, mn } = locale
-
-  console.log({
-    supermarcekAll: {
-      locale, noIds
-    }
-  })
-
+  
   try {
 
     const documents = await req.db.supermarket.aggregate([{
@@ -518,7 +512,7 @@ exports.single = async (req, res) => {
           // {
           //   $unwind: '$marca_obj'
           // }
-        ]).toArray()
+          ]).toArray()
 
           fulls = documents
         }

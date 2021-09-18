@@ -490,9 +490,7 @@ exports.updatePrices = async ({
         
         let newPrices = []
 
-        if (!moment) {
-          const _d = new Date()
-    
+        if (!moment) {    
           moment = functions.date()
         }
 
@@ -797,13 +795,6 @@ exports.all = async (req, res) => {
 
   const { uf, mn } = locale
 
-
-  console.log({
-    productAll: {
-      locale, noIds, enable_prices
-    }
-  })
-
   try {
 
     let documents = await req.db.product.aggregate([{
@@ -832,10 +823,6 @@ exports.all = async (req, res) => {
       //   $unwind: '$marca_obj'
       // }
     ]).toArray()
-
-    console.log({
-      documents
-    })
 
     documents = documents.map(document => {
 

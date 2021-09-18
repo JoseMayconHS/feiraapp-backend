@@ -98,12 +98,14 @@ exports.stringToObj = v => v.split(' ').reduce((acc, curr) => {
 
 exports.date = () => {
   const _d = new Date()
+
+  const dia = _d.getDate(),
+    mes = _d.getMonth() + 1,
+    ano = _d.getFullYear(),
+    hora = `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
     
   return {
-    dia: _d.getDate(), 
-    mes: _d.getMonth() + 1, 
-    ano: _d.getFullYear(), 
-    hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+    dia, mes, ano, hora
   }
 }
 
