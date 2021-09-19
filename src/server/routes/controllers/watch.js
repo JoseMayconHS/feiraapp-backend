@@ -150,6 +150,8 @@ exports.removes = async (req, res) => {
   try {
     let { ids = [] } = req.headers
 
+    console.log(req.headers)
+
     ids = ids.map(_id => new ObjectId(_id))
 
     if (ids.length) {

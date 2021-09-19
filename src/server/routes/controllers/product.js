@@ -290,7 +290,7 @@ exports._update = async ({
                       produto_peso: mongo_data ? mongo_data.peso : data.peso,
                       produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
                       preco_u, local, 
-                      supermercado_id, supermercado_nome: supermarket.nome,
+                      supermercado_nome: supermarket.nome,
                       moment: atualizado, db
                     })
           
@@ -631,7 +631,7 @@ exports.updatePrices = async ({
 
         await pushNotificationControllers
           .notify({ 
-            _id, preco_u, local, supermercado_id, moment, db,
+            _id, preco_u, local, moment, db,
             supermercado_nome, 
             produto_nome: produto.nome,
             produto_peso: produto.peso,

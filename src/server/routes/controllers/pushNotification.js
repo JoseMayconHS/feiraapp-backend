@@ -3,13 +3,13 @@ const { ObjectId } = require('mongodb'),
   firebase = require('../../../services/firebase')
 
 exports.notify = async ({ 
-  _id, preco_u, local, supermercado_id, moment, db,
-  produto_nome = '', produto_sabor = '', produto_peso = '', 
+  _id, preco_u, local, moment, db,
+  produto_nome = '', produto_sabor = {}, produto_peso = {}, 
   supermercado_nome = ''
 }) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
-    console.log('notify', { _id, preco_u, local, supermercado_id, moment, produto_nome, supermercado_nome })
+    console.log('notify', { _id, preco_u, local, moment, produto_nome, supermercado_nome, produto_peso, produto_sabor })
 
     if (functions.hasEmpty({
       produto_nome, supermercado_nome
@@ -21,34 +21,47 @@ exports.notify = async ({
 
     // (END) NÃO TESTADO
 
+    const $match = {
+      'produto_id._id': new ObjectId(_id),
+      'local.estado.cache_id': {
+        $in: [local.estado._id, 0]
+      },
+      'local.cidade.cache_id': {
+        $in: [local.cidade._id, 0]
+      },
+      // $lt: ['$valor', +preco_u]
+        // $expr: {
+        //   $lt: ['$valor', +preco_u]
+        // }
+        // valor: {
+        //   $lte: +preco_u
+        // }
+    }
+
+    console.log($match)
+
     const watches = await db.watch.aggregate([{
-      $match: {
-        'produto_id._id': new ObjectId(_id),
-        'local.estado.cache_id': {
-          $in: [local.estado.cache_id, 0]
-        },
-        'local.cidade.cache_id': {
-          $in: [local.cidade.cache_id, 0]
-        },
-        valor: {
-          $lt: ['$valor', +preco_u]
-        }
-      }
+      $match
     }]).toArray()
+    // const watches = await db.watch.find({}).toArray()
 
     console.log({ watches })
 
-    const stack = watches.map(watch => ({
+    const stack = watches
+    .filter(watch => +preco_u < watch.valor)
+    .map(watch => ({
       async fn() {
+        const notification = {
+          title: `${ produto_nome }${ produto_sabor.definido ? ` de ${ produto_sabor.nome }, ` : '' }${ functions.getWeight(produto_peso) } por ${ (+preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
+          body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia< 10 ? `0${ moment.dia }` : moment.dia }/${ moment.mes < 10 ? `0${ moment.mes }` : moment.mes } - ${ moment.hora }`
+        }
+        console.log(notification)
         try {
           await firebase.messaging()
             .sendToDevice(watch.push_token, {
               data: {
                 produto_id: _id
-              }, notification: {
-                title: `${ produto_nome }${ produto_nome.sabor.definido ? ` de ${ produto_sabor.nome }` : '' }${ functions.getWeight(produto_peso) } por ${ (preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
-                body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia< 10 ? `0${ moment.dia }` : moment.dia }/${ moment.mes < 10 ? `0${ moment.mes }` : moment.mes } - ${ moment.hora }`
-              }
+              }, notification
             })
         } catch(e) {
           console.error(e)
