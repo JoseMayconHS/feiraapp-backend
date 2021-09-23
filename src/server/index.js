@@ -19,7 +19,7 @@ app.use(express.json())
 
 app.use('/', (req, res, next) => {
   req.db = db
-  console.log({ url: req.url, body: req.body })
+  console.log({ url: req.url, body: req.body, method: req.method })
   next()
 })
 

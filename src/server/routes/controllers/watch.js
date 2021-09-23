@@ -148,11 +148,11 @@ exports.remove = async (req, res) => {
 
 exports.removes = async (req, res) => {
   try {
-    let { ids = [] } = req.headers
+    let { ids = JSON.stringify([]) } = req.headers
 
     console.log(req.headers)
 
-    ids = ids.map(_id => new ObjectId(_id))
+    ids = JSON.parse(ids).map(_id => new ObjectId(_id))
 
     if (ids.length) {
       await req.db.watch.deleteMany({
@@ -190,7 +190,7 @@ exports.updateLocale = async (req, res) => {
             estado_id: local.cidade.estado_id
           },
           estado: {
-            cache_id: local.estaco._id,
+            cache_id: local.estado._id,
             nome: local.estado.nome,
             sigla: local.estado.sigla
           }

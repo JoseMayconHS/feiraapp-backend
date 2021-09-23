@@ -141,7 +141,7 @@ exports.getWeight = (peso) => {
         return `${ this.formart(valor) }cm`
       }
     case 'unidade':
-      return `1 unidade`
+      return `1 un.`
     case 'pacote': 
       return `${ peso.valor } un.`
     default: 

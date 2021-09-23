@@ -110,6 +110,8 @@ exports.save = async ({
       try {
         const already = await db.product.findOne({ nome_key: item.nome_key })
 
+        console.log({ already, item })
+
         if (already) {
 
           const verifyType = () => {
@@ -118,7 +120,7 @@ exports.save = async ({
 
           const verifyWeight = () => {
             if (item.peso.tipo === already.peso.tipo) {
-              if (item.peso.valor === already.peso.valor && item.peso.force_down === already.peso.force_down) {
+              if (item.peso.valor == already.peso.valor && item.peso.force_down === already.peso.force_down) {
                 return true
               }
             }
@@ -127,7 +129,7 @@ exports.save = async ({
           }
 
           const verifyBrand = () => {
-            if (item.marca_id._id.length) {
+            if (String(item.marca_id._id).length) {
               return String(item.marca_id._id) === String(already.marca_id._id)
             } else {
               return already.sem_marca
@@ -146,7 +148,7 @@ exports.save = async ({
             }
           }
 
-          if (item.marca_id._id.length) {
+          if (String(item.marca_id._id).length) {
             if (verifyBrand() && verifyWeight() && verifyType() && verifyFlavor()) {
               response = already
             }
@@ -158,12 +160,12 @@ exports.save = async ({
             }
           }
 
-          // console.log(item.nome, {
-          //   Brand: verifyBrand(),
-          //   Type: verifyType(),
-          //   Flavor: verifyFlavor(),
-          //   Weight: verifyWeight()
-          // }, { already: !!response })
+          console.log(item.nome, {
+            Brand: verifyBrand(),
+            Type: verifyType(),
+            Flavor: verifyFlavor(),
+            Weight: verifyWeight()
+          }, { already: !!response })
         }
 
       } catch(e) {
@@ -189,13 +191,13 @@ exports.save = async ({
       const updateData = { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : nivel }
 
       await db.product.updateOne({
-        _id: new ObjectId(response._id)
-      }, updateData)
+        _id: response._id
+      }, {
+        $set: updateData
+      })
 
       return { ...response, ...updateData }
     } else {
-
-      console.log(item)
 
       const { insertedId } = await db.product.insertOne(item)
 
