@@ -4,7 +4,7 @@ const { ObjectId } = require('mongodb'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.save = async ({ 
-    data, hash_identify_device = '', local, db
+    data, hash_identify_device = '', local, db, push_token
   }) => {
   try {
 
@@ -184,7 +184,7 @@ exports.save = async ({
         // // console.log('item.precos.cidades', item.precos[0].cidades)
         // // console.log('item.precos.cidades.historico', item.precos[0].cidades[0].historico)
         await this._update({
-          data: item, local, mongo_data: response, db
+          data: item, local, mongo_data: response, db, push_token
         })
       }
 
@@ -211,7 +211,7 @@ exports.save = async ({
 }
 
 exports._update = async ({
-  data, hash_identify_device = '', local, mongo_data, db
+  data, hash_identify_device = '', local, mongo_data, db, push_token
 }) => {
   try {
     // console.log('product._update', { data, local, mongo_data })
@@ -293,7 +293,7 @@ exports._update = async ({
                       produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
                       preco_u, local, 
                       supermercado_nome: supermarket.nome,
-                      moment: atualizado, db
+                      moment: atualizado, db, push_token
                     })
           
                 } catch(e) {
@@ -304,27 +304,7 @@ exports._update = async ({
 
           await functions.middlewareAsync(...updatePricesInSupermarkets)
 
-          price.historico = [...price.historico, ...mongo_price.historico].sort((a, b) => {
-            if (a.data.ano === b.data.ano) {
-              if (a.data.mes === b.data.mes) {
-                if (a.data.dia === b.data.dia) {
-                  return 0
-                } else if (a.data.dia < b.data.dia) {
-                  return -1
-                } else {
-                  return 1
-                }
-              } else if (a.data.mes < b.data.mes) {
-                return -1
-              } else {
-                return 1
-              }
-            } else if (a.data.ano < b.data.ano) {
-              return -1
-            } else {
-              return 1
-            }
-          })
+          price.historico = functions.sortHistoric([...price.historico, ...mongo_price.historico])
 
           // // console.log('historico depois')
           // // console.log(price.historico)
@@ -405,7 +385,7 @@ exports._update = async ({
                 },
                 preco_u: '0' 
               },
-              historico: price.historico || []
+              historico: functions.sortHistoric(price.historico)|| []
             }
     
             state.cidades.push(_result)
@@ -477,7 +457,7 @@ exports._update = async ({
 
 exports.updatePrices = async ({ 
   _id, local = {}, preco_u, moment,
-  finished, db,
+  finished, db, push_token,
   supermercado_id, supermercado_nome
 }) => {
   return new Promise(async (resolve, reject) => {
@@ -515,7 +495,7 @@ exports.updatePrices = async ({
           if (region_index !== -1) {
             const price = prices[state_index].cidades[region_index]
 
-            price.historico = [historico, ...price.historico]
+            price.historico = functions.sortHistoric([historico, ...price.historico])
 
             if ((+price.menor_preco.preco_u === 0) || (+price.menor_preco.preco_u > +preco_u)) {
               if (+price.maior_preco.preco_u === 0) {
@@ -637,7 +617,8 @@ exports.updatePrices = async ({
             supermercado_nome, 
             produto_nome: produto.nome,
             produto_peso: produto.peso,
-            produto_sabor: produto.sabor
+            produto_sabor: produto.sabor,
+            push_token
           })
 
         resolve('')

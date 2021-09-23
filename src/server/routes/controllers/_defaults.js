@@ -8,7 +8,7 @@ exports.storeList = ({
     try {
   
       const {
-        data = [], hash_identify_device = '', local
+        data = [], hash_identify_device = '', local, push_token
       } = req.body
   
       const response = []
@@ -20,11 +20,11 @@ exports.storeList = ({
 
             if (item.api_id.length) {
               data = await update({
-                data: item, hash_identify_device, local, db: req.db
+                data: item, hash_identify_device, local, db: req.db, push_token
               })
             } else {
               data = await save({
-                data: item, hash_identify_device, local, db: req.db
+                data: item, hash_identify_device, local, db: req.db, push_token
               })
             }
 

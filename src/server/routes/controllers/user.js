@@ -96,7 +96,7 @@ exports.finishShopping = async (req, res) => {
                 await productControllers.updatePrices({
                   _id: produto_id._id,
                   local, moment, preco_u: data.preco_u, supermercado_id, supermercado_nome, 
-                  finished, db: req.db
+                  finished, db: req.db, push_token: req.body.push_token
                 })
               }
     

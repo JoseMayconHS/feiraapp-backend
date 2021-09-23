@@ -80,6 +80,30 @@ exports.upLevel = ({ level = 4, compare }) => {
   }
 }
 
+exports.sortHistoric = historic => {
+  return historic.sort((a, b) => {
+    if (a.data.ano === b.data.ano) {
+      if (a.data.mes === b.data.mes) {
+        if (a.data.dia === b.data.dia) {
+          return 0
+        } else if (a.data.dia < b.data.dia) {
+          return -1
+        } else {
+          return 1
+        }
+      } else if (a.data.mes < b.data.mes) {
+        return -1
+      } else {
+        return 1
+      }
+    } else if (a.data.ano < b.data.ano) {
+      return -1
+    } else {
+      return 1
+    }
+  }).splice(0, 100)
+}
+
 exports.setUndefineds = ({
   data, undefineds
 }) => {

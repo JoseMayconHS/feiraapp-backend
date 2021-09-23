@@ -5,7 +5,7 @@ const { ObjectId } = require('mongodb'),
 exports.notify = async ({ 
   _id, preco_u, local, moment, db,
   produto_nome = '', produto_sabor = {}, produto_peso = {}, 
-  supermercado_nome = ''
+  supermercado_nome = '', push_token = ''
 }) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
@@ -29,6 +29,9 @@ exports.notify = async ({
       'local.cidade.cache_id': {
         $in: [local.cidade._id, 0]
       },
+      push_token: {
+        $nin: [push_token]
+      }
       // $lt: ['$valor', +preco_u]
         // $expr: {
         //   $lt: ['$valor', +preco_u]
