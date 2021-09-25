@@ -144,31 +144,20 @@ exports.formart = (v) => {
 
 exports.getWeight = (peso) => {
   const valor = Number(peso.valor)
-
+  
   switch(peso.tipo) {
     case 'liquido':
-      if (valor < 100) {
-        return `${ valor }L`
-      } else {
-        return `${ this.formart(valor) }ml`
-      }
+      return `${ formart(valor) }${valor < (peso.force_down ? 6 : 100) ? 'L' : 'ml'}`
     case 'massa':
-      if (valor < (peso.force_down ? 6 : 100)) {
-        return `${ this.formart(valor) }kg`
-      } else {
-        return `${ this.formart(valor) }g`
-      }
+      return `${ formart(valor) }${ valor < (peso.force_down ? 6 : 100) ? 'kg': 'g' }`
     case 'metro':
-      if (valor < 100) {
-        return `${ this.formart(valor) }m`
-      } else {
-        return `${ this.formart(valor) }cm`
-      }
+      return `${ formart(valor) }${ valor < 100 ? 'm' : 'cm' }cm`
     case 'unidade':
       return `1 un.`
     case 'pacote': 
       return `${ peso.valor } un.`
     default: 
+      errorCallback && errorCallback(true)
       return ''
   }
 }
