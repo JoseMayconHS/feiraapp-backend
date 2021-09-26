@@ -668,6 +668,8 @@ exports.index = async (req, res) => {
       limitQuery = limit
     }
 
+    limitQuery = +limitQuery
+
     const options = [{
       $sort: {
         created_at: -1
@@ -874,6 +876,8 @@ exports.single = async (req, res) => {
       limitQuery = limit
     }
 
+    limitQuery = +limitQuery
+
     // console.log('product.single query', req.query)
     // console.log('product.single params', req.params)
     // console.log('product.single body', req.body)
@@ -1036,6 +1040,8 @@ exports.indexBy = async (req, res) => {
     if (!limitQuery) {
       limitQuery = limit
     }
+
+    limitQuery = +limitQuery
 
     // {
     //   where: { 

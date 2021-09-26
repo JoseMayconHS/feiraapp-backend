@@ -121,6 +121,8 @@ exports.index = async (req, res) => {
       limitQuery = limit
     }
 
+    limitQuery = +limitQuery
+
     const $match = {}
 
     if (nome.length) {
@@ -258,6 +260,8 @@ exports.indexBy = async (req, res) => {
     if (!limitQuery) {
       limitQuery = limit
     }
+
+    limitQuery = +limitQuery
 
     const $match = {}
 

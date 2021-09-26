@@ -273,7 +273,7 @@ exports.index = async (req, res) => {
 
   try {
 
-    const { where, undefineds = [] } = req.body
+    const { where, undefineds = [], produtos } = req.body
     let { page = 1 } = req.params
 
     page = +page
@@ -287,6 +287,8 @@ exports.index = async (req, res) => {
     if (!limitQuery) {
       limitQuery = limit
     }
+
+    limitQuery = +limitQuery
 
     let $match = {}
 
@@ -346,7 +348,7 @@ exports.index = async (req, res) => {
       }
     }, { 
       $replaceRoot: {
-        newRoot: { $mergeObjects: ['$doc', { produtos: [] }] }
+        newRoot: { $mergeObjects: ['$doc', produtos ? {} : { produtos: [] }] }
       }
     }]
 
