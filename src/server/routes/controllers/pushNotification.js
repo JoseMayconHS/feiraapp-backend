@@ -19,38 +19,61 @@ exports.notify = async ({
       }))
     }
 
-    // (END) NÃO TESTADO
-
-    const $match = {
+    const $match_default = {
       'produto_id._id': new ObjectId(_id),
+      push_token: {
+        $nin: [push_token]
+      }
+    }
+
+    // MATCHES
+    // PLANO ESTADUAL E NACIONAL JUNTOS, SOMENTE ESTADUAL OU NENHUM DOS DOIS
+    // VERIFICAÇÃO NORMAL
+    const $match = {
       'local.estado.cache_id': {
         $in: [local.estado._id, 0]
       },
       'local.cidade.cache_id': {
         $in: [local.cidade._id, 0]
       },
-      push_token: {
-        $nin: [push_token]
-      }
-      // $lt: ['$valor', +preco_u]
-        // $expr: {
-        //   $lt: ['$valor', +preco_u]
-        // }
-        // valor: {
-        //   $lte: +preco_u
-        // }
     }
 
-    console.log($match)
+    // MATCHES
+    // PLANO NACIONAL
+    // UMA EXCEÇÃO CASO O PLANO NACIONAL ESTEJA ATIVO E O ESTADUAL NÃO
+    // SÓ PEGA TODAS AS CIDADES DE OUTRO ESTADO, CASO SEJÁ O MESMO ESTADO, CAIRÁ NO $match
+    const $match_state_zero = {
+      'local.estado.cache_id': 0,
+      'local.estado.sigla': {
+        $nin: [local.estado.sigla]
+      },
+      'local.cidade.cache_id': {
+        $nin: [0]
+      },
+    }
 
     const watches = await db.watch.aggregate([{
-      $match
+      $facet: {
+        state_zero: [{
+          $match: {
+            ...$match_default,
+            ...$match_state_zero
+          }
+        }],
+        normal: [{
+          $match: {
+            ...$match_default,
+            ...$match
+          }
+        }]
+      }
     }]).toArray()
-    // const watches = await db.watch.find({}).toArray()
 
     console.log({ watches })
 
-    const stack = watches
+    const { state_zero, normal } = watches[0]
+
+    const stack = [...state_zero, ...normal]
     .filter(watch => +preco_u < watch.valor)
     .map(watch => ({
       async fn() {
@@ -58,7 +81,9 @@ exports.notify = async ({
           title: `${ produto_peso.tipo === 'pacote' ? 'Pacote de ' : '' }${ produto_nome }${ produto_sabor.definido ? ` de ${ produto_sabor.nome }, ` : ' ' }${ functions.getWeight(produto_peso) } por ${ (+preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
           body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia< 10 ? `0${ moment.dia }` : moment.dia }/${ moment.mes < 10 ? `0${ moment.mes }` : moment.mes } - ${ moment.hora }`
         }
+
         console.log(notification)
+
         try {
           await firebase.messaging()
             .sendToDevice(watch.push_token, {
