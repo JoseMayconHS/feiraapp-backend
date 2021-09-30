@@ -108,7 +108,7 @@ exports.notify = async ({
 exports.test = async () => {
   try {
     await firebase.messaging()
-      .sendToDevice('fBffx8s0SbuKedEoo1C3vb:APA91bFQVEGPaG6DRo7cPhsXFELsz5HAH0WQSAgoYm1sabiqOQtqlyc2foAMEv1gOHYFsZ-BeSTfMRIJK9tkmljclXlmHpsohRVmJGBwoCdOc5ZPi3ImvfiSTaRVH7Zj8jyRO72AD1iK', {
+      .sendToDevice('edhjCSyuSc282R9iyDvoOr:APA91bGW2NWZQPnO6tr2Kx-u9ongYL_YMuvenpI1pP7WcKfgo5JjUPnAqw2y0i3zSM4jNKh6JDtEbQNh9xhGe5MEBQ3_gEGWTG-bx7jof--EVEWgIzesShPAbkY7xnRwcm4LXu3cerym', {
         notification: {
           title: `${ 'Biscoito' }${ ' de morango' }${ ' 13un' } por ${ (1.45).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
           body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - 01/09 - ${ '10:55' }`

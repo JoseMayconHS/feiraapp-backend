@@ -597,9 +597,9 @@ exports.updatePrices = async ({
           precos: newPrices
         }
         
-        if (finished) {
-          data_update.presenca = produto.presenca + 1
-        }
+        // if (finished) {
+        //   data_update.presenca = produto.presenca + 1
+        // }
         
         // console.log('updatePrices ', data_update.precos)
 

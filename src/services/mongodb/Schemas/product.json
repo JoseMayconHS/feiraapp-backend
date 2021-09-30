@@ -31,10 +31,6 @@
 		"type": "Boolean",
 		"default": false
 	},
-	"presenca": {
-		"type": "Number",
-		"default": 0
-	},
 	"tipo": {
 		"type": {
 			"texto": {
