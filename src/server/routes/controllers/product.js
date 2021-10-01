@@ -385,7 +385,7 @@ exports._update = async ({
                 },
                 preco_u: '0' 
               },
-              historico: functions.sortHistoric(price.historico)|| []
+              historico: functions.sortHistoric(price.historico) || []
             }
     
             state.cidades.push(_result)
@@ -405,12 +405,12 @@ exports._update = async ({
 
             price.maior_preco.supermercado_id = {
               ...price.maior_preco.supermercado_id,
-              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+              _id: price.maior_preco.supermercado_id._id.length ? new ObjectId(price.maior_preco.supermercado_id._id) : ''
             }
   
             price.menor_preco.supermercado_id = {
               ...price.menor_preco.supermercado_id,
-              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+              _id: price.menor_preco.supermercado_id._id.length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
             }
   
             const _result = {

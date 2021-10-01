@@ -12,6 +12,7 @@ route
 	.put('/auth/app/produto/:id', productControllers.update)
 	.put('/auth/app/feira/finalizar', userControllers.finishShopping)
 	.put('/auth/app/observacoes', watchControllers.updateLocale)
+	.put('/auth/app/observar/:id', watchControllers.update)
 	// Dashboard
 	.put('/auth/admin/produto/:id', productControllers.update)
 	.put('/auth/admin/marca/:id', brandControllers.update)

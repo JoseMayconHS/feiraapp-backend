@@ -150,8 +150,6 @@ exports.removes = async (req, res) => {
   try {
     let { ids = JSON.stringify([]) } = req.headers
 
-    console.log(req.headers)
-
     ids = JSON.parse(ids).map(_id => new ObjectId(_id))
 
     if (ids.length) {
@@ -167,6 +165,24 @@ exports.removes = async (req, res) => {
 
   } catch(e) {
     console.error('watch.removes catch', e)
+    res.status(500).send()
+  }
+}
+
+exports.update = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const body = req.body
+
+    delete body._id
+
+    await req.db.watch.updateOne({ _id: new ObjectId(id) }, {
+      $set: body
+    })
+
+    res.status(200).json({ ok: true })
+  } catch(e) {
     res.status(500).send()
   }
 }

@@ -70,7 +70,7 @@ exports.storeList = async (req, res) => {
             throw new Error('Existe campos vazios!')
           }
 
-          const already = await req.db.brand.findOne({ nome_key: functions.keyWord(nome) })
+          const already = await req.db.brand.findOne({ nome_key: functions.keyWord(item.nome) })
 
           // console.log('brand.storeList already', already)
 
