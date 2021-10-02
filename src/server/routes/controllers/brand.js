@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
+  { optionsCounted } = require('../../../utils'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.store = async (req, res) => {
@@ -153,18 +154,6 @@ exports.index = async (req, res) => {
       $skip: (limitQuery * page) - limitQuery
     }, {
       $limit: limitQuery 
-    }]
-
-    const optionsCounted = [{
-      $group: {
-        _id: null,
-        count: { $sum: 1 }
-      }
-    }, {
-      $project: {
-        _id: 0,
-        count: 1
-      }
     }]
 
     let response = []

@@ -1,0 +1,7 @@
+{
+  "produto_id": "String",
+  "texto": {
+    "type": "String",
+    "default": ""
+  }
+}

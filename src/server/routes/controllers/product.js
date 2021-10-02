@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
+  { optionsCounted } = require('../../../utils'),
   pushNotificationControllers = require('./pushNotification'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
@@ -719,18 +720,6 @@ exports.index = async (req, res) => {
       $skip: (limitQuery * page) - limitQuery
     }, {
       $limit: limitQuery 
-    }]
-
-    const optionsCounted = [{
-      $group: {
-        _id: null,
-        count: { $sum: 1 }
-      }
-    }, {
-      $project: {
-        _id: 0,
-        count: 1
-      }
     }]
 
     const [{ documents, postsCounted }] = await req.db.product.aggregate([{

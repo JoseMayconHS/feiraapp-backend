@@ -3,7 +3,7 @@ const route = require('express').Router(),
 	supermarketControllers = require('../controllers/supermarket'),
 	brandControllers = require('../controllers/brand'),
 	admControllers = require('../controllers/adm'),
-	pushNotificationControllers = require('../controllers/pushNotification')
+	reportControllers = require('../controllers/report')
 
 const html = `
 	<div style='font-family: sans-serif;background: #bafcff;display: flex;justify-content: center;align-items: center;flex-direction: column;margin: 134px auto 20px auto;max-width: 500px;border-radius: 10px;box-shadow: 0 0 41px 20px #bafcff;border: 1px solid #999;'>
@@ -17,6 +17,8 @@ route
 	.get('/__origin__', (req, res) => res.send(html))
 	.get('/already', admControllers.qtd)
 	.get('/auth/admin/reconnect', admControllers.reconnect)
+	// Reporte
+	.get('/auth/admin/reportes/:page', reportControllers.index)
 	// Produto
 	.get('/auth/admin/produtos/:page', productControllers.index)
 	.get('/auth/admin/produto/todos', productControllers.all)
@@ -31,9 +33,5 @@ route
 	.get('/auth/admin/marcas/:page', brandControllers.index)
 	.get('/auth/app/marca/:id', brandControllers.single)
 	.get('/auth/app/marcas/:page', brandControllers.index)
-	// Notificações
-	// .get('/auth/admin/notifications', pushNotificationControllers.recents)
-	// .get('/auth/admin/qtd/expo', userControllers.qtd)
-	// .get('/auth/admin/cards', admControllers.cards)
 
 module.exports = app => app.use(route)

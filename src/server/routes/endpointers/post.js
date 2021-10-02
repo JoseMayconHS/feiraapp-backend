@@ -5,11 +5,14 @@ const route = require('express').Router(),
 	brandControllers = require('../controllers/brand'),
 	supermarketControllers = require('../controllers/supermarket'),
 	admControllers = require('../controllers/adm'),
-	pushNotificationControllers = require('../controllers/pushNotification'),
-	watchControllers = require('../controllers/watch')
+	watchControllers = require('../controllers/watch'),
+	reportControllers = require('../controllers/report')
 		
 route
 	// App
+	// Reporte
+	.post('/auth/app/reporte', reportControllers.store)
+	.post('/auth/app/reportes', reportControllers.storeList)
 	// Supermercado
 	.post('/auth/app/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	.post('/auth/app/supermercados', _defaultsControllers.storeList({ save: supermarketControllers.save, update: supermarketControllers._update }))

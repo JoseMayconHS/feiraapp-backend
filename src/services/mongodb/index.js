@@ -21,6 +21,7 @@ module.exports = () => {
         supermarket = db.collection("supermarket"),
         notification = db.collection("notification"),
         watch = db.collection("watch")
+        report = db.collection("report")
     
         if ([adm, product, brand, supermarket, notification, watch].includes(undefined)) {
           try {
@@ -30,13 +31,14 @@ module.exports = () => {
             supermarket = db.createCollection('supermarket')
             notification = db.createCollection('notification')
             watch = db.createCollection('watch')
+            report = db.collection("report")
           } catch(e) {
             console.log(e)
           }
         }
 
         resolve({
-          adm, product, brand, supermarket, notification, watch
+          adm, product, brand, supermarket, notification, watch, report
         })
         
       // perform actions on the collection object
