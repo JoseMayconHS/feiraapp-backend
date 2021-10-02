@@ -6,7 +6,8 @@ const route = require('express').Router(),
 	supermarketControllers = require('../controllers/supermarket'),
 	admControllers = require('../controllers/adm'),
 	watchControllers = require('../controllers/watch'),
-	reportControllers = require('../controllers/report')
+	reportControllers = require('../controllers/report'),
+	pushNotificationControllers = require('../controllers/pushNotification')
 		
 route
 	// App
@@ -46,6 +47,7 @@ route
 	.post('/dashboard/signin', admControllers.sign)
 	.post('/dashboard/signup', admControllers.store)
 	.post('/auth/admin/marca', brandControllers.store)
+	.post('/auth/admin/notificacao', pushNotificationControllers.send)
 	// Do cache para a api
 	.post('/auth/app/cache/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/app/cache/marca', brandControllers.store)

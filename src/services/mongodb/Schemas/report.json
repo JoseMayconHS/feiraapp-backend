@@ -1,5 +1,7 @@
 {
   "produto_id": "String",
+  "push_token": "String",
+  "_schema": "String",
   "texto": {
     "type": "String",
     "default": ""

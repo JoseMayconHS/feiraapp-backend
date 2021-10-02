@@ -9,7 +9,8 @@ exports.store = async (req, res) => {
       await req.db.report.insertOne({
         reporte_id: new ObjectId(req.body.reporte_id),
         texto: req.body.texto,
-        _schema: req.body._schema
+        _schema: req.body._schema,
+        push_token: req.body.push_token
       })
 
       ok = true
@@ -24,7 +25,7 @@ exports.store = async (req, res) => {
 
 exports.storeList = async (req, res) => {
   try {
-    let { data = [] } = req.body
+    let { data = [], push_token } = req.body
 
     let ok = false
 
@@ -34,7 +35,8 @@ exports.storeList = async (req, res) => {
         .map(item => ({
           reporte_id: new ObjectId(item.reporte_id),
           texte: item.texto,
-          _schema: req.body._schema
+          _schema: req.body._schema,
+          push_token
         }))
 
       await req.db.report.insert(data)

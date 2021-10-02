@@ -122,3 +122,25 @@ exports.test = async () => {
   }
 }
 
+exports.send = async (req, res) => {
+  try {
+    const { title, body, push_token } = req.body
+
+    if (functions.hasEmpty({
+      title, body, push_token
+    })) {
+      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+    }
+
+    await firebase.messaging()
+      .sendToDevice(push_token, {
+        notification: {
+          title, body
+        }
+      })
+  } catch(e) {
+    console.error(e)
+    res.status(500).send()
+  }
+}
+
