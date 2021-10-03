@@ -212,7 +212,7 @@ exports.save = async ({
 }
 
 exports._update = async ({
-  data, hash_identify_device = '', local, mongo_data, db, push_token
+  data, hash_identify_device = '', local, mongo_data, db, push_token, moment
 }) => {
   try {
     // console.log('product._update', { data, local, mongo_data })
@@ -249,12 +249,10 @@ exports._update = async ({
   
           // (EX) SE ESTA FUNCIONANDO CERTO
           // console.log('historico antes')
-    
-          const atualizado = functions.date() 
       
           const updatePricesInSupermarkets = price.historico
             .filter(historico => historico.supermercado_id._id.length)
-            .map(({ preco_u, supermercado_id }) => ({
+            .map(({ preco_u, supermercado_id, atualizado }) => ({
               async fn() {
                 try {
                   const supermarket = await db.supermarket.findOne({
@@ -266,6 +264,14 @@ exports._update = async ({
                   // console.log('updatePricesInSupermarkets products', products)
           
                   const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(mongo_data._id))
+
+                  if (!atualizado) {
+                    if (moment) {
+                      atualizado = moment
+                    } else {
+                      atualizado = functions.date() 
+                    }
+                  }
           
                   if (productIndex !== -1) {
                     products[productIndex].preco_u = preco_u 
@@ -279,6 +285,23 @@ exports._update = async ({
                       preco_u, atualizado
                     }]
                   }
+
+                  const produtos = await db.product.aggregate([{
+                    $match: {
+                      _id: {
+                        $in: products
+                          .filter(({ produto_id: { _id } }) => String(_id).length)
+                          .map(({ produto_id: { _id } }) => new ObjectId(_id))
+                      }
+                    }
+                  }, {
+                    $project: {
+                      _id: 1
+                    }
+                  }]).toArray()
+              
+                  // (DET) IMPEDIR QUE OS PRODUTOS DO SUPERMERCADO TENHA PRODUTOS QUE JÁ FORAM EXCLUIDOS
+                  products = products.filter(({ produto_id }) => produtos.some(({ _id }) => String(_id) === String(produto_id._id) ))
                   
                   await db.supermarket.updateOne({
                     _id: new ObjectId(supermercado_id._id)
@@ -832,7 +855,7 @@ exports.all = async (req, res) => {
         }
       }
 
-      // (END) LOGICA DE ENTREGAR OU NÃO OS PREÇOS JÁ REGISTRADOS
+      // (DET) LOGICA DE ENTREGAR OU NÃO OS PREÇOS JÁ REGISTRADOS
       document.precos = enable_prices ? [response] : []
 
       return document
@@ -1089,10 +1112,10 @@ exports.indexBy = async (req, res) => {
         $match: {
           push_token: body.push_token,
           'local.estado.cache_id': {
-            $in: [local.estado.cache_id, 0]
+            $in: [+local.estado.cache_id, 0]
           },
           'local.cidade.cache_id': {
-            $in: [local.cidade.cache_id, 0]
+            $in: [+local.cidade.cache_id, 0]
           }
         }
       }, {
@@ -1336,10 +1359,10 @@ exports.indexBy = async (req, res) => {
           pipeline: [{
             $match: {
               'local.estado.cache_id': {
-                $in: [local.estado.cache_id, 0]
+                $in: [+local.estado.cache_id, 0]
               },
               'local.cidade.cache_id': {
-                $in: [local.cidade.cache_id, 0]
+                $in: [+local.cidade.cache_id, 0]
               }
             }
           }],
@@ -1536,7 +1559,6 @@ exports.update = async (req, res) => {
     } else {
       const data = req.body
       delete data._id
-      delete data.marca
 
       if (data.marca_id) {
         data.marca_id = {
@@ -1552,12 +1574,12 @@ exports.update = async (req, res) => {
       if (!sem_marca) {
         const marca_nome = data.marca.nome
 
-        let data_marca = await db.brand.findOne({
+        let data_marca = await req.db.brand.findOne({
           nome_key: functions.keyWord(marca_nome)
         }, { projection: { nome: 1 } })
 
         if (!data_marca) {
-          const { insertedId } = await db.brand.insertOne({
+          const { insertedId } = await req.db.brand.insertOne({
             nome: marca_nome,
             nome_key: functions.keyWord(marca_nome)
           })
@@ -1576,10 +1598,18 @@ exports.update = async (req, res) => {
         data.sem_marca = sem_marca
       }
 
+      delete data.marca
+
       if (data.sabor && data.sabor.nome.length) {
         data.sabor = {
           nome: data.sabor.nome, nome_key: functions.keyWord(data.sabor.nome),
           definido: true
+        }
+      }
+
+      if (data.tipo && data.tipo.texto.length) {
+        data.tipo = {
+          texto: data.tipo.texto, texto_key: functions.keyWord(data.tipo.texto)
         }
       }
 
@@ -1644,8 +1674,39 @@ exports.remove = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
+    const product = await req.db.product.findOne({
+      _id: new ObjectId(id)
+    }, {
+      projection: {
+        marca_id: 1
+      }
+    })
+
+    if (String(product.marca_id._id).length) {
+      const other = await req.db.product.findOne({
+        _id: {
+          $ne: new ObjectId(id)
+        },
+        'marca_id._id': product.marca_id._id
+      }, {
+        projection: {
+          _id: 1
+        }
+      })
+
+      if (!other) {
+        await req.db.brand.deleteOne({
+          _id: product.marca_id._id
+        })
+      }
+    }
+
     await req.db.product.deleteOne({
       _id: new ObjectId(id)
+    })
+
+    await req.db.report.deleteMany({
+      reporte_id: new ObjectId(id)
     })
 
     res.status(200).send()

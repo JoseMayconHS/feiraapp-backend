@@ -326,8 +326,8 @@ exports.index = async (req, res) => {
         }
       }
 
-      $match['local.estado.cache_id'] = where.local_estado_id
-      $match['local.cidade.cache_id'] = where.local_cidade_id
+      $match['local.estado.cache_id'] = +where.local_estado_id
+      $match['local.cidade.cache_id'] = +where.local_cidade_id
     }
 
     if (!req.payload) {
@@ -420,8 +420,8 @@ exports.all = async (req, res) => {
         nivel: {
           $in: [1, 2]
         },
-        'local.estado.cache_id': uf,
-        'local.cidade.cache_id': mn,
+        'local.estado.cache_id': +uf,
+        'local.cidade.cache_id': +mn,
         _id: {
           $nin: noIds.map(_id => new ObjectId(_id))
         }
@@ -663,14 +663,6 @@ exports.single = async (req, res) => {
 }
 
 exports.updateProducts = async ({ data, _id, db }) => {
-  const _d = new Date()
-
-  const atualizado = {
-    dia: _d.getDate(), 
-    mes: _d.getMonth() + 1, 
-    ano: _d.getFullYear(), 
-    hora: `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
-  }
 
   const supermarket = await db.supermarket.findOne({
     _id: new ObjectId(_id)
@@ -695,14 +687,14 @@ exports.updateProducts = async ({ data, _id, db }) => {
         return {
           ...product,
           preco_u: product_in_request.preco_u,
-          atualizado
+          atualizado: product_in_request.atualizado
         }
       } else {
         return product
       }
     })
   
-    data.produtos.forEach(({ produto_id, preco_u }) => {
+    data.produtos.forEach(({ produto_id, preco_u, atualizado }) => {
       const productIndex = products
         .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
   
@@ -717,6 +709,23 @@ exports.updateProducts = async ({ data, _id, db }) => {
         })
       }
     })
+
+    const produtos = await db.product.aggregate([{
+      $match: {
+        _id: {
+          $in: products
+            .filter(({ produto_id: { _id } }) => String(_id).length)
+            .map(({ produto_id: { _id } }) => new ObjectId(_id))
+        }
+      }
+    }, {
+      $project: {
+        _id: 1
+      }
+    }]).toArray()
+
+    // (DET) IMPEDIR QUE OS PRODUTOS DO SUPERMERCADO TENHA PRODUTOS QUE JÁ FORAM EXCLUIDOS
+    products = products.filter(({ produto_id }) => produtos.some(({ _id }) => String(_id) === String(produto_id._id) ))
 
     await db.supermarket.updateOne({
       _id: new ObjectId(_id)

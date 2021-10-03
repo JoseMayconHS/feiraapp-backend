@@ -138,6 +138,8 @@ exports.send = async (req, res) => {
           title, body
         }
       })
+
+    res.status(200).json({ ok: true })
   } catch(e) {
     console.error(e)
     res.status(500).send()

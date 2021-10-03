@@ -119,10 +119,10 @@ exports.index = async (req, res) => {
       'produto_id._id': new ObjectId(id),
       push_token,
       'local.estado.cache_id': {
-        $in: [local.estado._id, 0]
+        $in: [+local.estado._id, 0]
       },
       'local.cidade.cache_id': {
-        $in: [local.cidade._id, 0]
+        $in: [+local.cidade._id, 0]
       }
     })
 
