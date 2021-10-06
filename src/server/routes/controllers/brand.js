@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb'),
   functions = require('../../../functions'),
   { optionsCounted } = require('../../../utils'),
+  productControllers = require('./product'),
   limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.store = async (req, res) => {
@@ -342,12 +343,42 @@ exports.remove = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
+    const deleteProducts = async () => {
+      try {
+        const products = await req.db.product.find({
+          'marca_id._id': new ObjectId(id)
+        }, {
+          projection: {
+            _id: 1
+          }
+        })
+
+        const stack = products.map(({ _id }) => ({
+          async fn() {
+            await productControllers.remove({
+              db: req.db,
+              noDeleteReferences: true,
+              params: {
+                id: String(_id)
+              }
+            })
+          }
+        }))
+
+        await functions.middlewareAsync(...stack)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    !req.noDeleteReferences && await deleteProducts()
+
     await req.db.brand.deleteOne({ _id: new ObjectId(id) })
 
-    res.status(200).send()
+    !req.noDeleteReferences &&  res.status(200).send()
 
   } catch(e) {
-    res.status(500).send(e)
+    !req.noDeleteReferences ? res.status(500).send(e) : console.error(e)
   }
 }
 

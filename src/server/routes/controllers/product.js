@@ -337,6 +337,9 @@ exports._update = async ({
           // // console.log('antes', { mongo_price, price })
 
           // (END) ATUALIZAR O PRECO NOS SUPERMERCADOS 
+
+          // (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
+            // IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
           
           if (
             (+mongo_price.menor_preco.preco_u === 0) || 
@@ -520,6 +523,9 @@ exports.updatePrices = async ({
             const price = prices[state_index].cidades[region_index]
 
             price.historico = functions.sortHistoric([historico, ...price.historico])
+
+            // (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
+            // IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
 
             if ((+price.menor_preco.preco_u === 0) || (+price.menor_preco.preco_u > +preco_u)) {
               if (+price.maior_preco.preco_u === 0) {
@@ -782,9 +788,9 @@ exports.all = async (req, res) => {
 
   const where = {}
 
-  if (status) {
-    where.status = true
-  }
+  // if (status) {
+  //   where.status = true
+  // }
 
   if (!locale) {
     throw new Error('Localização vazia')
@@ -796,9 +802,7 @@ exports.all = async (req, res) => {
 
     let documents = await req.db.product.aggregate([{
       $match: {
-        nivel: {
-          $in: [1]
-        },
+        nivel: 1,
         _id: {
           $nin: noIds.map(_id => new ObjectId(_id))
         }
@@ -860,6 +864,8 @@ exports.all = async (req, res) => {
 
       return document
     })
+
+    console.log(documents)
 
     res.status(200).json(documents)
   } catch(err) {
@@ -1674,32 +1680,80 @@ exports.remove = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
-    const product = await req.db.product.findOne({
-      _id: new ObjectId(id)
-    }, {
-      projection: {
-        marca_id: 1
-      }
-    })
-
-    if (String(product.marca_id._id).length) {
-      const other = await req.db.product.findOne({
-        _id: {
-          $ne: new ObjectId(id)
-        },
-        'marca_id._id': product.marca_id._id
-      }, {
-        projection: {
-          _id: 1
-        }
-      })
-
-      if (!other) {
-        await req.db.brand.deleteOne({
-          _id: product.marca_id._id
+    const deleteBrand = async () => {
+      try {
+        const product = await req.db.product.findOne({
+          _id: new ObjectId(id)
+        }, {
+          projection: {
+            marca_id: 1
+          }
         })
+    
+        if (String(product.marca_id._id).length) {
+          const other = await req.db.product.findOne({
+            _id: {
+              $ne: new ObjectId(id)
+            },
+            'marca_id._id': product.marca_id._id
+          }, {
+            projection: {
+              _id: 1
+            }
+          })
+    
+          if (!other) {
+            await req.db.brand.deleteOne({
+              _id: product.marca_id._id
+            })
+          }
+        }
+      } catch(e) {
+        console.error(e)
       }
     }
+
+    const deleteInSupermarket = async () => {
+      try {
+        const supermarkets = await req.db.supermarket.aggregate([{
+          $match: {
+            'produtos.produto_id._id': new ObjectId(id)
+          }
+        }, {
+          $project: {
+            produtos: 1
+          }
+        }]).toArray()
+
+        if (supermarkets.length) {
+          const stack = supermarkets.map(supermarket => ({
+            async fn() {
+              try {
+                const produtos = supermarket.produtos.filter(({ produto_id }) => String(produto_id._id) !== id)
+
+                await req.db.supermarket.updateOne({
+                  _id: supermarket._id
+                }, {
+                  $set: {
+                    produtos
+                  }
+                })
+              } catch(e) {
+                console.error(e)
+              }
+            }
+          }))
+
+          await functions.middlewareAsync(...stack)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    !req.noDeleteReferences && await deleteBrand()
+    
+    await deleteInSupermarket()
 
     await req.db.product.deleteOne({
       _id: new ObjectId(id)
@@ -1709,10 +1763,10 @@ exports.remove = async (req, res) => {
       reporte_id: new ObjectId(id)
     })
 
-    res.status(200).send()
+    !req.noDeleteReferences && res.status(200).send()
 
   } catch(e) {
-    res.status(500).send(e)
+    !req.noDeleteReferences ? res.status(500).send(e) : console.error(e)
   }
 }
 

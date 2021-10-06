@@ -1,4 +1,5 @@
 const { ObjectId }= require('mongodb')
+const { middlewareAsync } = require('../../../functions')
   functions = require('../../../functions'),
   { optionsCounted } = require('../../../utils'),
   limit = +process.env.LIMIT_PAGINATION || 10
@@ -403,9 +404,9 @@ exports.all = async (req, res) => {
 
   const where = {}
 
-  if (status) {
-    where.status = true
-  }
+  // if (status) {
+  //   where.status = true
+  // }
 
   if (!locale) {
     throw new Error('Localização vazia')
@@ -787,6 +788,106 @@ exports.remove = async (req, res) => {
 
     if (typeof id !== 'string')
       throw new Error()
+
+    const deleteInProductPrices = async () => {
+      const supermarket = await req.db.supermarket.findOne({
+        _id: new ObjectId(id)
+      }, {
+        projection: {
+          local: 1
+        }
+      })
+
+      const findDefault = {
+        'precos.estado_id': supermarket.local.estado.cache_id,
+        'precos.cidades.cidade_id': supermarket.local.cidade.cache_id
+      }
+
+      const $or = [
+        { 
+          ...findDefault,
+          'precos.cidades.menor_preco.supermercado_id._id': new ObjectId(id)
+        },
+        {
+          ...findDefault,
+          'precos.cidades.maior_preco.supermercado_id._id': new ObjectId(id)
+        },
+        {
+          ...findDefault,
+          'precos.cidades.historico.supermercado_id._id': new ObjectId(id)
+        }
+      ]
+
+      try {
+        const products = await req.db.product.find({
+          $or
+        }, {
+          projection: {
+            precos: 1
+          }
+        }).toArray()
+
+
+        if (products.length) {
+          const stack = products.map(product => ({
+            async fn() {
+              try {
+                let precos = product.precos
+
+                const state_index = precos.findIndex(preco => preco.estado_id === supermarket.local.estado.cache_id)
+
+                if (state_index !== -1) {
+                  const city_index = precos[state_index].cidades.findIndex(preco => preco.cidade_id === supermarket.local.cidade.cache_id)
+
+                  if (city_index !== -1) {
+                    const cidade = { ...precos[state_index].cidades[city_index] }
+
+                    const default_value = {
+                      supermercado_id: {
+                        _id: '',
+                        cache_id: 0
+                      },
+                      preco_u: '0',
+                    }
+
+                    cidade.historico = cidade.historico.filter(historico => String(historico.supermercado_id._id) !== id)
+                    
+                    if (String(cidade.maior_preco.supermercado_id._id) === id) {
+                      cidade.maior_preco = cidade.historico.sort((a, b) => b.preco_u - a.preco_u)[0] || default_value
+                    }
+                    
+                    if (String(cidade.menor_preco.supermercado_id._id) === id) {
+                      cidade.menor_preco = cidade.historico.sort((a, b) => a.preco_u - b.preco_u)[0] || default_value
+                    }
+
+                    precos[state_index].cidades[city_index] = cidade
+
+                  }
+
+                }
+
+                await req.db.product.updateOne({
+                  _id: product._id
+                }, {
+                  $set: {
+                    precos
+                  }
+                })
+
+              } catch(e) {
+                console.error(e)
+              }
+            }
+          }))
+
+          await middlewareAsync(...stack)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    await deleteInProductPrices()
 
     await req.db.supermarket.deleteOne({
       _id: new ObjectId(id)
