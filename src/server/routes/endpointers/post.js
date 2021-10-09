@@ -33,14 +33,14 @@ route
 	.post('/auth/app/marcas', brandControllers.storeList)
 	.post('/auth/admin/marca', brandControllers.store)
 	// Marcas (Buscar por nome)
-	.post('/auth/app/marcas/:page', brandControllers.indexBy)
+	// .post('/auth/app/marcas/:page', brandControllers.indexBy)
 	// Produto
 	.post('/auth/app/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/app/produtos', _defaultsControllers.storeList({ save: productControllers.save, update: productControllers._update }))
 	.post('/auth/app/produtos/:page', productControllers.indexBy)
+	.post('/auth/app/feira/produtos', productControllers.indexList)
 	.post('/auth/app/produto/:id/:page', productControllers.single)
 	.post('/auth/app/baixar/produto', productControllers.all)
-	.post('/auth/admin/produtos/:page', productControllers.indexBy)
 	.post('/auth/admin/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/admin/produto/:id', productControllers.single)
 	// Dashboard

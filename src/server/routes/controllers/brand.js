@@ -351,7 +351,7 @@ exports.remove = async (req, res) => {
           projection: {
             _id: 1
           }
-        })
+        }).toArray()
 
         const stack = products.map(({ _id }) => ({
           async fn() {

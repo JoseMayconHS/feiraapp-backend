@@ -309,7 +309,7 @@ exports.index = async (req, res) => {
       }
     }
 
-    if (cidade_id && estado_id) {
+    if (+cidade_id && +estado_id) {
       $match['local.estado.cache_id'] = +estado_id
       $match['local.cidade.cache_id'] = +cidade_id
     }
@@ -398,15 +398,7 @@ exports.all = async (req, res) => {
   // OK
   // (DESC) BUSCAR PARA DOWNLOAD AUTOMATICO SOMENTE PRODUTOS APROVADOS PELO GESTOR
 
-  const { status } = req.query
-
   const { locale, noIds = [] } = req.body
-
-  const where = {}
-
-  // if (status) {
-  //   where.status = true
-  // }
 
   if (!locale) {
     throw new Error('Localização vazia')

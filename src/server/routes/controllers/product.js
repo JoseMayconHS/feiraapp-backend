@@ -1,4 +1,5 @@
 const { ObjectId } = require('mongodb'),
+  { differenceInCalendarDays } = require('date-fns')
   functions = require('../../../functions'),
   { optionsCounted } = require('../../../utils'),
   pushNotificationControllers = require('./pushNotification'),
@@ -329,34 +330,36 @@ exports._update = async ({
           await functions.middlewareAsync(...updatePricesInSupermarkets)
 
           price.historico = functions.sortHistoric([...price.historico, ...mongo_price.historico])
-
-          // // console.log('historico depois')
-          // // console.log(price.historico)
-
           
-          // // console.log('antes', { mongo_price, price })
-
-          // (END) ATUALIZAR O PRECO NOS SUPERMERCADOS 
+          // console.log('antes', { mongo_price, price })
 
           // (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
-            // IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
+          // IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
           
           if (
-            (+mongo_price.menor_preco.preco_u === 0) || 
-            (+price.menor_preco.preco_u < +mongo_price.menor_preco.preco_u)
+            +mongo_price.menor_preco.preco_u === 0 || 
+            +price.menor_preco.preco_u < +mongo_price.menor_preco.preco_u ||
+            differenceInCalendarDays(new Date, mongo_price.menor_preco.data) > process.env.DAYS_AGO
           ) {
-            if (+mongo_price.maior_preco.preco_u === 0) {
-              // @ts-ignore
+            if (
+              +mongo_price.maior_preco.preco_u === 0 ||
+              (
+                differenceInCalendarDays(new Date, mongo_price.maior_preco.data) > process.env.DAYS_AGO &&
+                differenceInCalendarDays(new Date, mongo_price.menor_preco.data) < process.env.DAYS_AGO
+              )
+            ) {
               mongo_price.maior_preco.preco_u = mongo_price.menor_preco.preco_u
-              // @ts-ignore
               mongo_price.maior_preco.supermercado_id = mongo_price.menor_preco.supermercado_id
+              mongo_price.maior_preco.data = mongo_price.menor_preco.data
             }
 
             mongo_price.menor_preco.preco_u = price.menor_preco.preco_u
             mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
+            mongo_price.menor_preco.data = new Date
           } else if (
-            (+mongo_price.maior_preco.preco_u === 0) || 
-            (+price.maior_preco.preco_u > +mongo_price.maior_preco.preco_u)
+            +mongo_price.maior_preco.preco_u === 0 || 
+            +price.maior_preco.preco_u > +mongo_price.maior_preco.preco_u ||
+            differenceInCalendarDays(new Date, mongo_price.maior_preco.data) > process.env.DAYS_AGO
           ) {
             if (price.maior_preco.supermercado_id) {
               mongo_price.maior_preco.preco_u = price.maior_preco.preco_u
@@ -365,18 +368,20 @@ exports._update = async ({
               mongo_price.maior_preco.preco_u = price.menor_preco.preco_u
               mongo_price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
             }
+
+            mongo_price.maior_preco.data = new Date
           }
 
           mongo_price.historico = price.historico
 
           mongo_price.maior_preco.supermercado_id = {
             ...mongo_price.maior_preco.supermercado_id,
-            _id: new ObjectId(mongo_price.maior_preco.supermercado_id._id)
+            _id: String(mongo_price.maior_preco.supermercado_id._id).length ? new ObjectId(mongo_price.maior_preco.supermercado_id._id) : ''
           }
 
           mongo_price.menor_preco.supermercado_id = {
             ...mongo_price.menor_preco.supermercado_id,
-            _id: new ObjectId(mongo_price.menor_preco.supermercado_id._id)
+            _id: String(mongo_price.menor_preco.supermercado_id._id).length ? new ObjectId(mongo_price.menor_preco.supermercado_id._id) : ''
           }
 
           // // console.log('depois', { mongo_price, price })
@@ -394,18 +399,24 @@ exports._update = async ({
 
             price.maior_preco.supermercado_id = {
               ...price.maior_preco.supermercado_id,
-              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+              _id: String(price.maior_preco.supermercado_id._id).length ? new ObjectId(price.maior_preco.supermercado_id._id) : ''
             }
   
             price.menor_preco.supermercado_id = {
               ...price.menor_preco.supermercado_id,
-              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+              _id: String(price.menor_preco.supermercado_id._id).length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
             }
     
             const _result = {
               cidade_id: local.cidade._id,
-              menor_preco: price.menor_preco,
-              maior_preco: price.maior_preco || { 
+              menor_preco: {
+                ...price.menor_preco,
+                data: new Date
+              },
+              maior_preco: price.maior_preco ? {
+                ...price.maior_preco,
+                data: new Date
+              } : { 
                 supermercado_id: {
                   _id: '',
                   cache_id: 0
@@ -444,8 +455,14 @@ exports._update = async ({
               estado_id: local.estado._id,
               cidades: [{
                 cidade_id: local.cidade._id,
-                menor_preco: price.menor_preco,
-                maior_preco: price.maior_preco || { 
+                menor_preco: {
+                  ...price.menor_preco,
+                  data: new Date
+                },
+                maior_preco: price.maior_preco ? {
+                  ...price.maior_preco,
+                  data: new Date
+                } : { 
                   supermercado_id: {
                     _id: '',
                     cache_id: 0
@@ -527,35 +544,48 @@ exports.updatePrices = async ({
             // (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
             // IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
 
-            if ((+price.menor_preco.preco_u === 0) || (+price.menor_preco.preco_u > +preco_u)) {
-              if (+price.maior_preco.preco_u === 0) {
-                // @ts-ignore
+            if (
+              +price.menor_preco.preco_u === 0 || 
+              +price.menor_preco.preco_u > +preco_u ||
+              differenceInCalendarDays(new Date, price.menor_preco.data) > process.env.DAYS_AGO
+            ) {
+              if (
+                +price.maior_preco.preco_u === 0 ||
+                (
+                  differenceInCalendarDays(new Date, price.maior_preco.data) > process.env.DAYS_AGO &&
+                  differenceInCalendarDays(new Date, price.menor_preco.data) < process.env.DAYS_AGO
+                )
+              ) {
                 price.maior_preco.preco_u = price.menor_preco.preco_u
-                // @ts-ignore
                 price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
+                price.maior_preco.data = price.menor_preco.data
               }
 
               price.menor_preco.preco_u = preco_u
               price.menor_preco.supermercado_id = supermercado_id
+              price.menor_preco.data = new Date
 
-              // @ts-ignore
-            } else if ((+price.maior_preco.preco_u === 0) || (+price.maior_preco.preco_u < +preco_u)) {
-              // @ts-ignore
+            } else if (
+              +price.maior_preco.preco_u === 0 || 
+              +price.maior_preco.preco_u < +preco_u ||
+              differenceInCalendarDays(new Date, price.maior_preco.data) > process.env.DAYS_AGO
+            ) {
+              
               price.maior_preco.preco_u = preco_u
-              // @ts-ignore
               price.maior_preco.supermercado_id = supermercado_id
+              price.maior_preco.data = new Date
             }
 
             const cidades = prices[state_index].cidades
 
             price.maior_preco.supermercado_id = {
               ...price.maior_preco.supermercado_id,
-              _id: new ObjectId(price.maior_preco.supermercado_id._id)
+              _id: price.maior_preco.supermercado_id._id.length ? new ObjectId(price.maior_preco.supermercado_id._id) : ''
             }
   
             price.menor_preco.supermercado_id = {
               ...price.menor_preco.supermercado_id,
-              _id: new ObjectId(price.menor_preco.supermercado_id._id)
+              _id: price.menor_preco.supermercado_id._id.length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
             }
 
             cidades.splice(region_index, 1, price)
@@ -565,6 +595,7 @@ exports.updatePrices = async ({
             // SE NAO TIVER ESSE cidade
 
             const menor_preco = {
+              data: new Date,
               preco_u,
               supermercado_id: {
                 ...supermercado_id,
@@ -594,6 +625,7 @@ exports.updatePrices = async ({
           // SE NAO TIVER ESSE ESTADO
 
           const menor_preco = {
+            data: new Date,
             preco_u,
             supermercado_id: {
               ...supermercado_id,
@@ -605,7 +637,7 @@ exports.updatePrices = async ({
             supermercado_id: {
               _id: '',
               cache_id: 0
-            }, preco_u: '0' 
+            }, preco_u: '0'
           }
 
           const _result = {
@@ -626,12 +658,6 @@ exports.updatePrices = async ({
         const data_update = {
           precos: newPrices
         }
-        
-        // if (finished) {
-        //   data_update.presenca = produto.presenca + 1
-        // }
-        
-        // console.log('updatePrices ', data_update.precos)
 
         const updateData = { ...data_update, nivel: prices.length && produto.nivel > 2 ? 2 : produto.nivel }
 
@@ -782,15 +808,7 @@ exports.all = async (req, res) => {
   // OK
   // (DESC) BUSCAR PARA DOWNLOAD AUTOMATICO SOMENTE PRODUTOS APROVADOS PELO GESTOR
 
-  const { status } = req.query
-
   const { locale, noIds = [], enable_prices } = req.body
-
-  const where = {}
-
-  // if (status) {
-  //   where.status = true
-  // }
 
   if (!locale) {
     throw new Error('Localização vazia')
@@ -1046,6 +1064,67 @@ exports.single = async (req, res) => {
 	}
 }
 
+exports.indexList = async (req, res) => {
+  try {
+
+    const { allLevel } = req.query
+
+    const { ids = [] } =  req.body
+
+    const optionsMatch = [{
+      $match: {
+        nivel: {
+         [allLevel ? '$nin' : '$in']: allLevel ? [0] : [1, 2]
+        },
+        _id: {
+          [ids.length ? '$in' : '$nin']: ids.length ? ids.map(id => new ObjectId(id)) : []
+        }
+      }
+    }]
+
+    console.log(optionsMatch[0])
+    
+    const optionsDocuments = [{
+        $sort: {
+          created_at: -1
+        }
+      }, {
+        $lookup: {
+          from: 'brand',
+          localField: 'marca_id._id',
+          foreignField: '_id',
+          as: 'marca_obj'
+        }
+      },
+      // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
+      // {
+      //   $unwind: '$marca_obj'
+      // },
+      {
+        $group: {
+          _id: '$_id',
+          doc: { $first: '$$ROOT' }
+        }
+      }, {
+        $replaceRoot: {
+          newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
+        }
+      }
+    ]
+
+    const documents = await req.db.product.aggregate([
+      ...optionsMatch,
+      ...optionsDocuments
+    ]).toArray()
+
+    res.status(200).json({ ok: true, data: documents })
+
+  } catch (e) {
+    console.log(e)
+    res.status(500).send()
+  }
+}
+
 exports.indexBy = async (req, res) => {
 	try {
 
@@ -1061,21 +1140,6 @@ exports.indexBy = async (req, res) => {
 
     limitQuery = +limitQuery
 
-    // {
-    //   where: { 
-      //   tipos: [Array], 
-      //   nome: '', 
-      //   favorito: false ,
-      //   observados: false
-      // },
-    //   push_token: 'expotoken-fake',
-    //   ids: []
-      // supermercado_id: '',
-      // marca_id: '',
-    // }
-
-    console.log('product.indexBy', { body: req.body, page, query: req.query, limitQuery })
-
     const where = {
       request_ids: body.where.ids || [],
       observer_ids: [],
@@ -1086,7 +1150,7 @@ exports.indexBy = async (req, res) => {
       favorites_ids: body.where.favoritos || [],
       not_ids: body.ids || []
     }
-    const { local } = body
+    const { local, no_page, allLevel, push_token = '' } = body
 
     if (body.where.nome && body.where.nome.length) {
 
@@ -1116,7 +1180,7 @@ exports.indexBy = async (req, res) => {
 
       const observer_products = await req.db.watch.aggregate({
         $match: {
-          push_token: body.push_token,
+          push_token,
           'local.estado.cache_id': {
             $in: [+local.estado.cache_id, 0]
           },
@@ -1150,14 +1214,6 @@ exports.indexBy = async (req, res) => {
       })
 
       if (products_by_supermarket) {
-        // const newIds = products_by_supermarket.produtos.filter(({
-        //   produto_id
-        // }) => {
-        //   const index = where.ids
-        //     .findIndex(_id => String(_id) === String(produto_id._id))
-
-        //   return index === -1
-        // }).map(({ produto_id }) => produto_id._id)
         const newIds = products_by_supermarket.produtos
           .map(({ produto_id }) => produto_id._id)
 
@@ -1179,34 +1235,11 @@ exports.indexBy = async (req, res) => {
       }]).toArray()
 
       if (products_by_brand) {
-        // const newIds = products_by_brand.filter(({
-        //   _id
-        // }) => {
-        //   const index = where.ids
-        //     .findIndex(where_id => String(where_id) === String(_id))
-
-        //   return index === -1
-        // }).map(({ _id }) => _id)
         const newIds = products_by_brand.map(({ _id }) => _id)
 
         where.brand_ids = newIds
       }
     }
-
-    // if (body.ids) {
-    //   if (body.ids.length) {
-    //     // DEIXANDO SOMENTE ids QUE NAO ESTAO DENTRO DO ARRAY DE body.ids
-    //     // console.log('removendo', { selects: where.all_ids, req: body.ids })
-    //     where.all_ids = where.all_ids.filter(_id => {
-    //       const index = body.ids.findIndex(not_id => String(not_id) === String(_id))
-  
-    //       return index === -1
-    //     })
-    //   } else {
-    //     // where.ids = []
-    //   }
-    // }
-
 
     if (body.where.tipos && body.where.tipos.length) {
       const product_by_types = await req.db.product.aggregate([{
@@ -1222,78 +1255,14 @@ exports.indexBy = async (req, res) => {
       }]).toArray()
 
       if (product_by_types) {
-        // const newIds = product_by_types.filter(({
-        //   _id
-        // }) => {
-        //   const index = where.ids
-        //     .findIndex(where_id => String(where_id) === String(_id))
-
-        //   let index2 = -1
-        //   if (ids_from_request) {
-        //     index2 = ids_from_request
-        //       .findIndex(where_id => String(where_id) === String(_id))
-        //   }
-
-        //   return index === -1 || index2 !== -1
-        // })
-        // .map(({ _id }) => _id)
-
         where.types_ids = product_by_types
           .map(({ _id }) => _id)
-
-        // if (ids_from_request) {
-        //   where.ids = newIds
-        // } else {
-        //   where.ids = [ ...where.ids, ...newIds ]
-        // }
       }
     }
 
     const then = async documents => {
-      // let data = [ ...documents ]
-
-      // data = data.map(item => ({
-      //   ...item, 
-      //   precos: []
-      // }))
-
-      // const brandObjMiddleware = data.map(({ sem_marca, marca_id }, index) => ({
-      //   async fn() {
-
-      //     if (!sem_marca) {
-      //       let brand = await Brand.findById(marca_id._id)
-
-      //       data[index].marca_obj = brand
-      //     }
-      //   }
-      // }))
-
-      // const watchObjMiddleware = data.map(({ _id }, index) => ({
-      //   async fn() {
-
-      //     let watch = await Watch.findOne()
-      //       .where('produto_id._id', _id)
-      //       .populate()
-      //       .where('local.estado.cache_id', local.estado.cache_id)
-      //       .where('local.cidade.cache_id', local.cidade.cache_id)
-
-      //     if (watch) {       
-      //       data[index].notificacao = watch
-      //     }
-
-      //   }
-      // }))
-
-      // await functions.middlewareAsync(...brandObjMiddleware, ...watchObjMiddleware)
-
-      // data.precos = []
-
+      console.log(documents)
       res.status(200).json({ ok: true, data: documents, limit: limitQuery })
-    }
-
-    const _catch = e => {
-      console.error(e)
-      res.status(500).send()
     }
     
     let ids = [...new Set([
@@ -1332,17 +1301,15 @@ exports.indexBy = async (req, res) => {
       ids = ids.filter(_id => where.supermarket_ids.some(w_id => String(w_id) === String(_id)))
     }
 
-    // console.log({ ids })
-
     const filterMatch = {
       _id: {
         $nin: where.not_ids.map(_id => new ObjectId(_id))
       }
     }
 
-    const optionsMatch = {
+    const optionsMatch = allLevel ? {} : {
       nivel: {
-        $in: [1, 2]
+        $in:  [1, 2]
       }
     }
     
@@ -1357,30 +1324,30 @@ exports.indexBy = async (req, res) => {
           foreignField: '_id',
           as: 'marca_obj'
         }
-      }, {
-        $lookup: {
-          from: 'watch',
-          localField: '_id',
-          foreignField: 'produto_id._id',
-          pipeline: [{
-            $match: {
-              'local.estado.cache_id': {
-                $in: [+local.estado.cache_id, 0]
-              },
-              'local.cidade.cache_id': {
-                $in: [+local.cidade.cache_id, 0]
-              }
-            }
-          }],
-          as: 'notificacao'
-        }
       }, 
+      // {
+      //   $lookup: {
+      //     from: 'watch',
+      //     localField: '_id',
+      //     foreignField: 'produto_id._id',
+      //     pipeline: [{
+      //       $match: {
+      //         'push_token': push_token,
+      //         'local.estado.cache_id': {
+      //           $in: [+local.estado.cache_id, 0]
+      //         },
+      //         'local.cidade.cache_id': {
+      //           $in: [+local.cidade.cache_id, 0]
+      //         }
+      //       }
+      //     }],
+      //     as: 'notificacao'
+      //   }
+      // }, 
       // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
       // {
       //   $unwind: '$marca_obj'
-      // }, {
-      //   $unwind: '$notificacao'
-      // }, 
+      // },
       {
         $group: {
           _id: '$_id',
@@ -1399,6 +1366,10 @@ exports.indexBy = async (req, res) => {
       $limit: limitQuery 
     }]
 
+    console.log({ no_page, allLevel })
+
+    console.log(optionsMatch)
+
     const clean_search = async () => {
       const documents = await req.db.product.aggregate([
         {
@@ -1411,16 +1382,6 @@ exports.indexBy = async (req, res) => {
       ]).toArray()
 
       await then(documents)
-
-      // Product.find()
-      //   .populate()
-      //   .where('nivel').in([1, 2])
-      //   .where('_id').nin(where.not_ids)
-      //   .limit(limitQuery)
-      //   .skip((limitQuery * page) - limitQuery)
-      //   .sort('-created_at')
-      //   .then(then)
-      //   .catch(_catch)
     }
 
     const filter_search = async () => {
@@ -1431,7 +1392,7 @@ exports.indexBy = async (req, res) => {
         }
       }
 
-      if (body.no_page) {
+      if (no_page) {
 
         const documents = await req.db.product.aggregate([
           options,
@@ -1439,14 +1400,6 @@ exports.indexBy = async (req, res) => {
         ]).toArray()
   
         await then(documents)
-        // Product.find()
-        //   .populate()
-        //   .where('nivel').in([1, 2])
-        //   .where('_id').in(ids)
-        //   .where('_id').nin(where.not_ids)
-        //   .sort('-created_at')
-        //   .then(then)
-        //   .catch(_catch)
       } else {
         const documents = await req.db.product.aggregate([
           options,
@@ -1495,180 +1448,112 @@ exports.update = async (req, res) => {
     if (typeof id !== 'string')
       throw new Error()
 
-    const { preco } = req.body
+    const data = req.body
 
-    // console.log('product.update ', req.body)
-    if (preco) {
-      const { 
-        estado = {}, cidade = {}, 
-        supermercado_id, preco_u,
-      } = preco
+    delete data._id
 
-      const { nome: estado_nome } = estado
-      const { nome: cidade_nome } = cidade
-
-      if (functions.hasEmpty({
-        estado_nome, cidade_nome, supermercado_id, id
-      })) {
-        return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
-      }
-    
-      const atualizado = functions.date()
-
-      const supermarket = await req.db.supermarket.findOne({
-        _id: new ObjectId(supermercado_id)
-      }, { produtos: 1, nome: 1 })
-
-      let products = supermarket.produtos
-
-      // console.log('supermarket.produtos ', products)
-      const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(id))
-
-      if (productIndex !== -1) {
-        products[productIndex].preco_u = preco_u 
-      } else {
-        products = [ ...products, {
-          produto_id: {
-            _id: new ObjectId(id), cache_id: 0
-          },
-          preco_u,
-          atualizado
-        }]
+    if (data.marca_id) {
+      data.marca_id = {
+        _id: new ObjectId(data.marca_id._id),
+        cache_id: 0
       }
 
-      await req.db.supermarket.updateOne({
-        _id: new ObjectId(supermarket._id)
-      }, {
-        $set: {
-          produtos: products
-        }
-      })
+      data.sem_marca = false
+    }
 
-      try {
-        // console.log('updatePrices props ', {
-        //   _id, 
-        //   local: { estado, cidade }, 
-        //   supermercado_id, preco_u 
-        // })
-        await this.updatePrices({
-          _id: id, local: { estado, cidade }, 
-          supermercado_id, preco_u, db: req.db,
-          supermercado_nome: supermarket.nome, moment: atualizado
+    const sem_marca = !(data.marca && data.marca.nome.length)
+  
+    if (!sem_marca) {
+      const marca_nome = data.marca.nome
+
+      let data_marca = await req.db.brand.findOne({
+        nome_key: functions.keyWord(marca_nome)
+      }, { projection: { nome: 1 } })
+
+      if (!data_marca) {
+        const { insertedId } = await req.db.brand.insertOne({
+          nome: marca_nome,
+          nome_key: functions.keyWord(marca_nome)
         })
 
-        res.status(200).json({ ok: true, message: 'Dados atualizados!' })
-      } catch(e) {
-        console.error(e)
-        res.status(500).send()
-      }
-
-    } else {
-      const data = req.body
-      delete data._id
-
-      if (data.marca_id) {
-        data.marca_id = {
-          _id: new ObjectId(data.marca_id._id),
-          cache_id: 0
+        data_marca = {
+          _id: insertedId
         }
 
-        data.sem_marca = false
+      } 
+
+      data.marca_id = {
+        _id: data_marca._id,
+        cache_id: 0
       }
 
-      const sem_marca = !(data.marca && data.marca.nome.length)
-    
-      if (!sem_marca) {
-        const marca_nome = data.marca.nome
-
-        let data_marca = await req.db.brand.findOne({
-          nome_key: functions.keyWord(marca_nome)
-        }, { projection: { nome: 1 } })
-
-        if (!data_marca) {
-          const { insertedId } = await req.db.brand.insertOne({
-            nome: marca_nome,
-            nome_key: functions.keyWord(marca_nome)
-          })
-
-          data_marca = {
-            _id: insertedId
-          }
-
-        } 
-
-        data.marca_id = {
-          _id: data_marca._id,
-          cache_id: 0
-        }
-
-        data.sem_marca = sem_marca
-      }
-
-      delete data.marca
-
-      if (data.sabor && data.sabor.nome.length) {
-        data.sabor = {
-          nome: data.sabor.nome, nome_key: functions.keyWord(data.sabor.nome),
-          definido: true
-        }
-      }
-
-      if (data.tipo && data.tipo.texto.length) {
-        data.tipo = {
-          texto: data.tipo.texto, texto_key: functions.keyWord(data.tipo.texto)
-        }
-      }
-
-      await req.db.product.updateOne({
-        _id: new ObjectId(id)
-      }, {
-        $set: data
-      })
-
-      res.status(200).send()
+      data.sem_marca = sem_marca
     }
-  } catch(e) {
-    console.error(e)
-    res.status(500).send()
-  }
-}
 
-exports.updateMany = async (req, res) => {
-  try {
-    // (END) SEM USO
+    delete data.marca
 
-    const {
-      data = [], local, moment, campo, supermercado_id, finished
-    } = req.body
-
-    // console.log('updateMany', req.body)
-
-    const updates = data.map(({ produto_id, data }) => ({
-      async fn() {
-        try {
-
-          if (campo == 'precos') {
-            await this.updatePrices({
-              _id: produto_id._id,
-              local, moment, preco_u: data.preco_u, supermercado_id, finished, db: req.db
-            })
-          }
-
-        } catch(e) {
-          console.error(e)
-        }
+    if (data.sabor && data.sabor.nome.length) {
+      data.sabor = {
+        nome: data.sabor.nome, nome_key: functions.keyWord(data.sabor.nome),
+        definido: true
       }
-    }))
+    }
 
-    updates.length && await functions.middlewareAsync(...updates)
+    if (data.tipo && data.tipo.texto.length) {
+      data.tipo = {
+        texto: data.tipo.texto, texto_key: functions.keyWord(data.tipo.texto)
+      }
+    }
 
-    res.status(200).json({ ok: true })
+    await req.db.product.updateOne({
+      _id: new ObjectId(id)
+    }, {
+      $set: data
+    })
 
+    res.status(200).send()
   } catch(e) {
     console.error(e)
     res.status(500).send()
   }
 }
+
+// exports.updateMany = async (req, res) => {
+//   try {
+//     // (END) SEM USO
+
+//     const {
+//       data = [], local, moment, campo, supermercado_id, finished
+//     } = req.body
+
+//     // console.log('updateMany', req.body)
+
+//     const updates = data.map(({ produto_id, data }) => ({
+//       async fn() {
+//         try {
+
+//           if (campo == 'precos') {
+//             await this.updatePrices({
+//               _id: produto_id._id,
+//               local, moment, preco_u: data.preco_u, supermercado_id, finished, db: req.db
+//             })
+//           }
+
+//         } catch(e) {
+//           console.error(e)
+//         }
+//       }
+//     }))
+
+//     updates.length && await functions.middlewareAsync(...updates)
+
+//     res.status(200).json({ ok: true })
+
+//   } catch(e) {
+//     console.error(e)
+//     res.status(500).send()
+//   }
+// }
 
 exports.remove = async (req, res) => {
   // OK
