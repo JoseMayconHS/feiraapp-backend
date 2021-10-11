@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs'),
+  { differenceInCalendarDays } = require('date-fns'),
   remove_accents = require('remove-accents'),
   numberFormatter = require('currency-formatter'),
   crypto = require('crypto'),
@@ -78,6 +79,10 @@ exports.upLevel = ({ level = 4, compare }) => {
     default:
       return level
   }
+}
+
+exports.daysAgo = (moment) => {
+  return differenceInCalendarDays(new Date, moment)
 }
 
 exports.sortHistoric = historic => {
