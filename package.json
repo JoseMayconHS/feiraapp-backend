@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "feira-app",
   "author": {
     "name": "José Maycon Hermogenes da Silva",
@@ -10,7 +10,7 @@
     "dev": "nodemon src/server",
     "prod": "pm2 start ecosystem.config.js --env production",
     "proto": "pm2 start ecosystem.config.js",
-    "pull": "git pull -X origin production"
+    "pull": "git pull -X theirs"
   },
   "dependencies": {
     "axios": "^0.21.0",
