@@ -720,7 +720,7 @@ exports.store = async (req, res) => {
 
 		// console.log('product.store ', req.body)
 
-		const data = await save({
+		const data = await this.save({
 			data: req.body, hash_identify_device, db: req.db
 		})
 
@@ -1623,6 +1623,16 @@ exports.remove = async (req, res) => {
 			}
 		}
 
+		const deleteWatches = async () => {
+			try {
+				await req.db.watch.deleteMany({
+					'produto_id._id': new ObjectId(id)
+				})
+			} catch (e) {
+				console.error(e)
+			}
+		}
+
 		const deleteInSupermarket = async () => {
 			try {
 				const supermarkets = await req.db.supermarket.aggregate([{
@@ -1664,6 +1674,8 @@ exports.remove = async (req, res) => {
 		!req.noDeleteReferences && await deleteBrand()
 
 		await deleteInSupermarket()
+
+		await deleteWatches()
 
 		await req.db.product.deleteOne({
 			_id: new ObjectId(id)
