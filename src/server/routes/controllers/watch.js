@@ -6,6 +6,8 @@ exports.save = async ({
 }) => {
   try {
 
+    let ok = false
+
     const {
       push_token,
       valor,
@@ -87,17 +89,29 @@ exports.store = async (req, res) => {
     // }
 
     const { 
-      hash_identify_device = ''
+      hash_identify_device = '', produto_id
     } = req.body
+
+    const itemExists = await req.db.product.findOne({
+      _id: new ObjectId(produto_id._id)
+    }, {
+      projection: { _id: 1 }
+    })
+
+    if (itemExists) {
+      const data = await this.save({
+        data: req.body, hash_identify_device, db: req.db
+      })
+  
+      res.status(201).json({ ok: !!data, data })
+    } else {
+      res.status(200).json({ ok: false, message: 'Este produto já foi excluído!', deleted: true })
+    }
 
     // console.log('watch.create', req.body)
 
-    const data = await save({
-      data: req.body, hash_identify_device, db: req.db
-    })
-
-    res.status(201).json({ ok: !!data, data })
   } catch(e) {
+    console.log(e)
     res.status(500).send()
   }
 }

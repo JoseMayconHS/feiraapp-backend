@@ -221,7 +221,7 @@ exports.store = async (req, res) => {
       hash_identify_device = ''
     } = req.body
 
-    const data = await save({
+    const data = await this.save({
       data: req.body, hash_identify_device, db: req.db
     })
 
@@ -247,7 +247,7 @@ exports.storeList = async (req, res) => {
       async fn() {
         try {   
 
-          const save_response = await save({
+          const save_response = await this.save({
             data: item, hash_identify_device, db: req.db
           })
       

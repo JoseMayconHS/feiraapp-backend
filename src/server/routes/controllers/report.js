@@ -23,7 +23,7 @@ exports.store = async (req, res) => {
       ok = true
     }
 
-    res.status(201).json({ ok })
+    res.status(201).json({ ok, deleted: !itemExists })
   } catch(e) {
     console.log(e)
     res.status(500).send()

@@ -25,7 +25,7 @@ route
 	// Supermercado (Buscar por localizacao)
 	.post('/auth/app/supermercados/:page', supermarketControllers.index)
 	// Observar
-	.post('/auth/app/observar', _defaultsControllers.store(watchControllers.save))
+	.post('/auth/app/observar', watchControllers.store)
 	.post('/auth/app/observacoes', _defaultsControllers.storeList({ save: watchControllers.save, update: watchControllers._update }))
 	.post('/auth/app/observar/:id', watchControllers.index)
 	// Marca
