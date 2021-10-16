@@ -474,7 +474,7 @@ exports.single = async (req, res) => {
             .filter(({ produto_id }) => !full_products.some(_id => String(_id) === String(produto_id._id)))
             .map(({ produto_id: { _id } }) => new ObjectId(_id))
 
-          const documents = await req.db.product.aggregate([{
+          const documents = _ids.length ? await req.db.product.aggregate([{
             $match: {
               _id: {
                 $in: _ids
@@ -496,7 +496,7 @@ exports.single = async (req, res) => {
           // {
           //   $unwind: '$marca_obj'
           // }
-          ]).toArray()
+          ]).toArray() : []
 
           fulls = documents
         }

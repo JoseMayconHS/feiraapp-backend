@@ -10,7 +10,8 @@
     "dev": "nodemon src/server",
     "prod": "pm2 start ecosystem.config.js --env production",
     "proto": "pm2 start ecosystem.config.js",
-    "pull": "git pull -X theirs"
+    "pull": "git pull -X theirs",
+    "aws": "ssh -i \"AWS_feiraapp.pem\" ubuntu@ec2-18-228-162-86.sa-east-1.compute.amazonaws.com"
   },
   "dependencies": {
     "axios": "^0.21.0",
