@@ -313,8 +313,12 @@ exports.index = async (req, res) => {
       $match['local.estado.cache_id'] = +estado_id
       $match['local.cidade.cache_id'] = +cidade_id
     }
+
+    let bests 
     
     if (where) {
+      bests = where.bests
+
       if (where.nome) {
         const regex = new RegExp(functions.keyWord(where.nome))
 
@@ -350,7 +354,7 @@ exports.index = async (req, res) => {
       }
     }, { 
       $replaceRoot: {
-        newRoot: { $mergeObjects: ['$doc', produtos ? {} : { produtos: [] }] }
+        newRoot: { $mergeObjects: ['$doc', produtos || bests ? {} : { produtos: [] }] }
       }
     }]
 
@@ -362,10 +366,7 @@ exports.index = async (req, res) => {
 
     const [{ documents, postsCounted }] = await req.db.supermarket.aggregate([{
       $facet: {
-        documents: [
-          ...options,
-          ...optionsPaginated
-        ],
+        documents: options.concat(bests ? [] : optionsPaginated),
         postsCounted: [
           ...options,
           ...optionsCounted
@@ -379,7 +380,30 @@ exports.index = async (req, res) => {
       count = postsCounted[0].count
     }
 
-    let data = [ ...documents ]
+    if (bests) console.log('Ordenar por melhores')
+
+    // (END) ORDERNAR POR MELHORES
+    let data = bests ? documents
+        .map(item => ({
+          ...item,
+          __media: item.produtos.length ? (item.produtos.reducer((acc, curr) => {
+            acc += +curr.preco_u
+
+            return acc
+          }, 0).toFixed(2) / item.produtos.length) : 0
+        }))
+        .sort((a,b) => a.produtos.length ? a.__media - b.__media : 1)
+        .map(item => {
+          delete item.__media
+
+          if (!produtos) {
+            item.produtos = []
+          }
+
+          return item
+        })
+        .slice((page * limitQuery) - limitQuery, page * limitQuery) : 
+        [ ...documents ]
 
     if (undefineds.length) {
       data = functions.setUndefineds({
