@@ -386,13 +386,29 @@ exports.index = async (req, res) => {
     let data = bests ? documents
         .map(item => ({
           ...item,
-          __media: item.produtos.length ? (item.produtos.reducer((acc, curr) => {
+          __media: item.produtos.length ? (item.produtos.reduce((acc, curr) => {
             acc += +curr.preco_u
 
             return acc
-          }, 0).toFixed(2) / item.produtos.length) : 0
+          }, 0) / item.produtos.length).toFixed(2) : 0
         }))
-        .sort((a,b) => a.produtos.length ? a.__media - b.__media : 1)
+        .sort((a,b) => {
+          const v = a.__media - b.__media
+
+          if (a.__media) {
+            switch(true) {
+              case (v < 0):
+                return -1
+              case (v > 0):
+                return 1
+              default:
+                return 0
+            }
+          } else {
+            return 1
+          }
+
+        })
         .map(item => {
           delete item.__media
 
