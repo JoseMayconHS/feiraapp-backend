@@ -410,7 +410,7 @@ exports.index = async (req, res) => {
 
         })
         .map(item => {
-          delete item.__media
+          // delete item.__media
 
           if (!produtos) {
             item.produtos = []
@@ -426,6 +426,8 @@ exports.index = async (req, res) => {
         data, undefineds
       })
     }
+
+    console.log(data)
 
     res.status(200).json({ ok: true, data, count, limit: limitQuery, page })
   } catch(err) {
