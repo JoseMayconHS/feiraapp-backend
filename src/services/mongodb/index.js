@@ -11,7 +11,7 @@ module.exports = () => {
         return resolve()
       }
 
-      console.log('Mongo conectado!')
+    // console.log('Mongo conectado!')
   
       const db = client.db("app")
   
@@ -33,7 +33,7 @@ module.exports = () => {
             watch = db.createCollection('watch')
             report = db.collection("report")
           } catch(e) {
-            console.log(e)
+            console.error(e)
           }
         }
 

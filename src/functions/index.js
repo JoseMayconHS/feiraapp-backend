@@ -230,7 +230,7 @@ exports.authenticate_adm = (req, res, next) => {
       })
 
   } catch(e) {
-    console.log(e)
+    console.error(e)
     res.status(401).send(e)
   }
 }
@@ -287,7 +287,7 @@ exports.authenticate_request = (req, res, next) => {
       res.status(401).send()
     }
   } catch(e) {
-    console.log(e)
+    console.error(e)
     res.status(500).send()
   }
 }

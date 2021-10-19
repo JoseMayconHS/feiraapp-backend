@@ -68,7 +68,7 @@ exports._update = async ({
   data, hash_identify_device = ''
 }) => {
   try {
-    console.log('watch._update', data)
+  // console.log('watch._update', data)
 
 
   } catch(e) {
@@ -111,7 +111,7 @@ exports.store = async (req, res) => {
     // console.log('watch.create', req.body)
 
   } catch(e) {
-    console.log(e)
+    console.error(e)
     res.status(500).send()
   }
 }
@@ -203,7 +203,7 @@ exports.update = async (req, res) => {
 
 exports.updateLocale = async (req, res) => {
   try {
-    console.log('watch.updateLocale', req.body)
+  // console.log('watch.updateLocale', req.body)
 
     const { ids, local } = req.body
 
@@ -230,7 +230,7 @@ exports.updateLocale = async (req, res) => {
 
     res.status(200).send()
   } catch(e) {
-    console.log(e)
+    console.error(e)
     res.status(500).send()
   }
 }

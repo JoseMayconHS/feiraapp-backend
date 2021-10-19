@@ -10,7 +10,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
       nome, local, produtos = [], cache_id = 0, status, nivel = 4
     } = data
 
-    console.log('supermarket.save()', data)
+  // console.log('supermarket.save()', data)
 
     const { estado = {}, cidade = {} } = local
     
@@ -427,7 +427,7 @@ exports.index = async (req, res) => {
       })
     }
 
-    console.log(data)
+  // console.log(data)
 
     res.status(200).json({ ok: true, data, count, limit: limitQuery, page })
   } catch(err) {
@@ -652,12 +652,12 @@ exports.single = async (req, res) => {
           classification
         }
 
-        console.log(data)
+      // console.log(data)
 
         res.status(200).json({ ok: true, data })
 
       } else {
-        console.log('Supermercado não aprovado ou interagido')
+      // console.log('Supermercado não aprovado ou interagido')
         res.status(400).send()
       }
 

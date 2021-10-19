@@ -97,7 +97,7 @@ exports.qtd = async (req, res) => {
     res.status(200).json({ already: !!already });
 
   } catch (err) {
-    console.log(err)
+    console.error(err)
     res.status(500).send(err);
   }
 }
@@ -147,12 +147,12 @@ exports.store = async (req, res) => {
           });
       }
     } catch(e) {
-      console.log(e)
+      console.error(e)
       res.status(200).json({ ok: false, message: "Não criado" });
     }
 
   } catch (err) {
-    console.log(err)
+    console.error(err)
     res.status(500).send(err);
   }
 };
@@ -175,7 +175,7 @@ exports.update = async (req, res) => {
 
     res.status(200).json({ ok: true })
   } catch(e) {
-    console.log(e)
+    console.error(e)
     res.status(500).send()
   }
 }
@@ -220,7 +220,7 @@ exports.sign = async (req, res) => {
     }
 
   } catch (err) {
-    console.log(err)
+    console.error(err)
     res.status(500).send(err);
   }
 };
@@ -259,7 +259,7 @@ exports.reconnect = async (req, res) => {
     }
 
   } catch (err) {
-    console.log(err)
+    console.error(err)
     res.status(500).send(err);
   }
 };

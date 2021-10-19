@@ -15,7 +15,7 @@ exports.cacheToAPI = async (req, res) => {
 
     const { supermercado, marca, produto, notificacao } = cache
 
-    console.log('Finalizar cache', { hash_identify_device, cache })
+  // console.log('Finalizar cache', { hash_identify_device, cache })
 
     if (produto) {
       
@@ -86,7 +86,7 @@ exports.finishShopping = async (req, res) => {
           data = [], local, moment, campo, supermercado_id, supermercado_nome, finished
         } = props
     
-        console.log('updateMany', req.body)
+      // console.log('updateMany', req.body)
     
         const updates = data.map(({ produto_id, data }) => ({
           async fn() {
