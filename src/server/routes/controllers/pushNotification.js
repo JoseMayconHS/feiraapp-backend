@@ -113,7 +113,7 @@ exports.test = async () => {
           title: `${ 'Biscoito' }${ ' de morango' }${ ' 13un' } por ${ (1.45).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
           body: `Em ${ 'Karla' }(${ 'Paulista' }/${ 'PE' }) - 01/09 - ${ '10:55' }`
         }, data: {
-          produto_id: '1'
+          produto_id: '61703e74f58dab35e1cf2f85'
         }
       })
   // console.log('Notificação de teste')
@@ -124,7 +124,7 @@ exports.test = async () => {
 
 exports.send = async (req, res) => {
   try {
-    const { title, body, push_token } = req.body
+    const { title, body, push_token, data = {} } = req.body
 
     if (functions.hasEmpty({
       title, body, push_token
@@ -136,7 +136,7 @@ exports.send = async (req, res) => {
       .sendToDevice(push_token, {
         notification: {
           title, body
-        }
+        }, data
       })
 
     res.status(200).json({ ok: true })
