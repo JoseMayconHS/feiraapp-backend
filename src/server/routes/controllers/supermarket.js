@@ -309,8 +309,11 @@ exports.index = async (req, res) => {
       }
     }
 
-    if (+cidade_id && +estado_id) {
+    if (+estado_id) {
       $match['local.estado.cache_id'] = +estado_id
+    }
+
+    if (+cidade_id) {
       $match['local.cidade.cache_id'] = +cidade_id
     }
 

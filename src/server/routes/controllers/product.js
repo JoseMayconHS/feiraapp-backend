@@ -1530,6 +1530,10 @@ exports.update = async (req, res) => {
 			}
 		}
 
+		if (data.nome && data.nome.length) {
+			data.nome_key = functions.keyWord(data.nome)
+		}
+
 		await req.db.product.updateOne({
 			_id: new ObjectId(id)
 		}, {

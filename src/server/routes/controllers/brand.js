@@ -323,9 +323,15 @@ exports.update = async (req, res) => {
 
     const { id } = req.params
 
-    delete req.body._id
+    const data = req.body
 
-    await req.db.brand.updateOne({ _id: new ObjectId(id) }, { $set: req.body })
+    delete data._id
+
+    if (data.nome && data.nome.length) {
+			data.nome_key = functions.keyWord(data.nome)
+		}
+
+    await req.db.brand.updateOne({ _id: new ObjectId(id) }, { $set: data })
 
     res.status(200).json({ ok: true })
 

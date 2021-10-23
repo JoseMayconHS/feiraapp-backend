@@ -106,13 +106,13 @@ exports.store = async (req, res) => {
   // OK
 
   try {
-    const { username, autoLogin, email } = req.body;
+    const { username, autoLogin } = req.body;
     let { password } = req.body;
 
     password = functions.criptor(password.trim().toLowerCase())
 
     const data = {
-      username, username_key: functions.keyWord(username), email,
+      username, username_key: functions.keyWord(username),
       password
     }
 
