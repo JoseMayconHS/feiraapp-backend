@@ -1,5 +1,4 @@
-const { ObjectId }= require('mongodb')
-const { middlewareAsync } = require('../../../functions')
+const { ObjectId }= require('mongodb'),
   functions = require('../../../functions'),
   { optionsCounted } = require('../../../utils'),
   limit = +process.env.LIMIT_PAGINATION || 10
@@ -26,7 +25,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
     }
     
     const item = {
-      nome, nome_key: functions.keyWord(nome),
+      nome: functions.camellize(nome), nome_key: functions.keyWord(nome),
       cache_id, hash_identify_device, status, nivel,
       produtos: produtos.map(produto => ({
         ...produto,
@@ -797,7 +796,8 @@ exports.update = async (req, res) => {
         
         delete body._id
 
-        if (body.nome) {
+        if (body.nome && body.nome.length) {
+          body.nome = functions.camellize(body.nome)
           body.nome_key = functions.keyWord(body.nome)
         }
 
@@ -915,7 +915,7 @@ exports.remove = async (req, res) => {
             }
           }))
 
-          await middlewareAsync(...stack)
+          await functions.middlewareAsync(...stack)
         }
       } catch (e) {
         console.error(e)

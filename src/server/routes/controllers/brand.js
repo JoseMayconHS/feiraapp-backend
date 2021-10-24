@@ -32,7 +32,7 @@ exports.store = async (req, res) => {
       try {
 
         const data = { 
-          nome, nome_key: functions.keyWord(nome), descricao, 
+          nome: functions.camellize(nome), nome_key: functions.keyWord(nome), descricao, 
           cache_id, hash_identify_device, created_at: Date.now() 
         }
 
@@ -81,7 +81,11 @@ exports.storeList = async (req, res) => {
 
             response.push(already)
           } else {
-            const data = { ...item, hash_identify_device, created_at: Date.now() }
+            const data = { 
+              ...item, 
+              nome: functions.camellize(item.nome), nome_key: functions.keyWord(item.nome), 
+              hash_identify_device, created_at: Date.now() 
+            }
 
             const { insertedId } = await req.db.brand.insertOne(data)
 
@@ -328,6 +332,7 @@ exports.update = async (req, res) => {
     delete data._id
 
     if (data.nome && data.nome.length) {
+      data.nome = functions.camellize(data.nome)
 			data.nome_key = functions.keyWord(data.nome)
 		}
 

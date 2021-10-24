@@ -174,6 +174,16 @@ exports.capitalize = (val) => {
   return val.charAt(0).toUpperCase() + val.substring(1).toLowerCase()
 }
 
+exports.camellize = (str) => {
+  const firstLetter = str.replace(/^[^*]/g, (match) => {
+    return +match === 0 ? ' ' : match.toUpperCase()
+  })
+
+  return firstLetter.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ0-9]+(.)/g, (match) => {
+    return +match === 0 ? ' ' : match.toUpperCase()
+  })
+}
+
 exports.token = payload => {
   return new Promise((resolve, reject) => {
     try {
