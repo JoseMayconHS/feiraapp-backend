@@ -534,13 +534,15 @@ exports.updatePrices = async ({
 				moment = functions.date()
 			}
 
+			supermercado_id = {
+				cache_id: supermercado_id.cache_id,
+				_id: new ObjectId(supermercado_id._id)
+			}
+
 			const historico = {
 				data: moment,
 				preco_u,
-				supermercado_id: {
-					...supermercado_id,
-					_id: new ObjectId(supermercado_id._id)
-				}
+				supermercado_id
 			}
 
 			const state_index = prices.findIndex(preco => preco.estado_id === estado._id)
@@ -622,10 +624,7 @@ exports.updatePrices = async ({
 					const menor_preco = {
 						data: new Date,
 						preco_u,
-						supermercado_id: {
-							...supermercado_id,
-							_id: new ObjectId(supermercado_id._id)
-						}
+						supermercado_id
 					}
 
 					const maior_preco = {
@@ -652,10 +651,7 @@ exports.updatePrices = async ({
 				const menor_preco = {
 					data: new Date,
 					preco_u,
-					supermercado_id: {
-						...supermercado_id,
-						_id: new ObjectId(supermercado_id._id)
-					}
+					supermercado_id
 				}
 
 				const maior_preco = {
@@ -907,8 +903,6 @@ exports.all = async (req, res) => {
 
 			return document
 		})
-
-		console.log(documents)
 
 		res.status(200).json(documents)
 	} catch (err) {

@@ -141,7 +141,7 @@ exports.date = () => {
 exports.formart = (v) => {
   return numberFormatter.format(v, {
     symbol: '',
-    decimal: ',',
+    decimal: '.',
     thousand: '.',
     precision: 2
   })
@@ -152,11 +152,11 @@ exports.getWeight = (peso) => {
   
   switch(peso.tipo) {
     case 'liquido':
-      return `${ formart(valor) }${valor < (peso.force_down ? 6 : 100) ? 'L' : 'ml'}`
+      return `${ this.formart(valor) }${valor < (peso.force_down ? 6 : 100) ? 'L' : 'ml'}`
     case 'massa':
-      return `${ formart(valor) }${ valor < (peso.force_down ? 6 : 100) ? 'kg': 'g' }`
+      return `${ this.formart(valor) }${ valor < (peso.force_down ? 6 : 100) ? 'kg': 'g' }`
     case 'metro':
-      return `${ formart(valor) }${ valor < 100 ? 'm' : 'cm' }cm`
+      return `${ this.formart(valor) }${ valor < 100 ? 'm' : 'cm' }cm`
     case 'unidade':
       return `1 un.`
     case 'pacote': 

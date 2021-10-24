@@ -505,6 +505,8 @@ exports.single = async (req, res) => {
         }
       })
 
+      console.log(single)
+
       if (single) {
         const { produtos, local } = single
 
@@ -550,8 +552,8 @@ exports.single = async (req, res) => {
 
         const setClassifications = async () => {
           const query = produtos
-            .map(({ produto_id,  }) => produto_id._id)
-            .filter(v => v.length)
+            .map(({ produto_id }) => produto_id._id)
+            .filter(v => String(v).length)
             .map(v => new ObjectId(v))
 
 
@@ -577,7 +579,7 @@ exports.single = async (req, res) => {
                 const response_item = {
                   nome: produto.nome,
                   sabor: produto.sabor.nome || '',
-                  peso: produto.peso,
+                  peso: functions.getWeight(produto.peso),
                   marca: '',
                   preco_u, 
                   produto_id
@@ -607,13 +609,32 @@ exports.single = async (req, res) => {
                     const last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
                       return (String(single._id) !== String(history_supermercado_id._id))
                     })
-        
+                    
                     if (my_last_price) {
                       if (last_price) {
+
                         if (+last_price.preco_u >= +my_last_price.preco_u) {
                           // menor preco
+
+                          const latest_of_all_supermarkets = price.historico.filter(({ supermercado_id: id1 }, index) => {
+                            return price.historico.findIndex(({ supermercado_id: id2 }) => {
+                              return String(id2._id) === String(id1._id)
+                            }) === index
+                          })
+  
+                          let best_of_history_sorted = latest_of_all_supermarkets
+                            .filter(({ supermercado_id: history_supermercado_id }) => {
+                              return (String(single._id) !== String(history_supermercado_id._id))
+                            })
+                            .sort((a, b) => +b.preco_u - +a.preco_u)
+  
+                          const best_of_history = best_of_history_sorted[best_of_history_sorted.length - 1]
+  
+                          if (+best_of_history.preco_u >= +my_last_price.preco_u) {
+                            // response.melhores_precos.push(response_item)
+                            classification.melhores_precos.push(response_item)
+                          }
             
-                          classification.melhores_precos.push(response_item)
                         } else if (+last_price.preco_u < +my_last_price.preco_u) {
                           // maior preco
             
