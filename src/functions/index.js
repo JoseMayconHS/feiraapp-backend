@@ -90,7 +90,11 @@ exports.sortHistoric = historic => {
     if (a.data.ano === b.data.ano) {
       if (a.data.mes === b.data.mes) {
         if (a.data.dia === b.data.dia) {
-          return 0
+          if (a.data.hora < b.data.hora) {
+            return -1
+          } else {
+            return 1
+          }
         } else if (a.data.dia < b.data.dia) {
           return -1
         } else {
