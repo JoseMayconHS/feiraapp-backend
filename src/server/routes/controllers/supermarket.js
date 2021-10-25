@@ -31,7 +31,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
         ...produto,
         produto_id: {
           ...produto.produto_id,
-          _id: new ObjectId(produto.produto_id._id)
+          _id: produto.produto_id._id.length ? new ObjectId(produto.produto_id._id) : produto.produto_id._id
         }
       })),
       local: {
