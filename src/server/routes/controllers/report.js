@@ -47,7 +47,7 @@ exports.storeList = async (req, res) => {
           created_at: Date.now()
         }))
 
-      await req.db.report.insert(data)
+      await req.db.report.insertMany(data)
 
       ok = true
     }
