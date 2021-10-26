@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken'),
   bcryptjs = require('bcryptjs'),
+  moment = require('moment-timezone'),
   { differenceInCalendarDays } = require('date-fns'),
   remove_accents = require('remove-accents'),
   numberFormatter = require('currency-formatter'),
@@ -110,7 +111,10 @@ exports.sortHistoric = historic => {
     } else {
       return -1
     }
-  }).splice(0, 100)
+  }).splice(0, 100).map(history => ({
+    ...history,
+    api: true
+  }))
 }
 
 exports.setUndefineds = ({
@@ -130,12 +134,12 @@ exports.stringToObj = v => v.split(' ').reduce((acc, curr) => {
 }, {})
 
 exports.date = () => {
-  const _d = new Date()
+  const _d = moment().tz('America/Recife')
 
-  const dia = _d.getDate(),
-    mes = _d.getMonth() + 1,
-    ano = _d.getFullYear(),
-    hora = `${ _d.getHours() < 10 ? `0${ _d.getHours() }` : _d.getHours() }:${ _d.getMinutes() < 10 ? `0${ _d.getMinutes() }` : _d.getMinutes() }`
+  const dia = _d.day(),
+    mes = _d.month() + 1,
+    ano = _d.year(),
+    hora = `${ _d.hour() < 10 ? `0${ _d.hour() }` : _d.hour() }:${ _d.minute() < 10 ? `0${ _d.minute() }` : _d.minute() }`
     
   return {
     dia, mes, ano, hora

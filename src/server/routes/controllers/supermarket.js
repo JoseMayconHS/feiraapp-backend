@@ -155,6 +155,7 @@ exports._update = async ({
             if (product.produto_id._id.length) {
               new_products.push({
                 ...product,
+                api: true,
                 produto_id: {
                   cache_id: 0,
                   _id: new ObjectId(product.produto_id._id)
@@ -168,6 +169,7 @@ exports._update = async ({
               if (product_data) {
                 new_products.push({
                   ...product,
+                  api: true,
                   produto_id: {
                     cache_id: 0,
                     _id: new ObjectId(product_data._id)
@@ -382,9 +384,7 @@ exports.index = async (req, res) => {
       count = postsCounted[0].count
     }
 
-    if (bests) console.log('Ordenar por melhores')
-
-    // (END) ORDERNAR POR MELHORES
+    // (DESC) ORDERNAR POR MELHORES
     let data = bests ? documents
         .map(item => ({
           ...item,
@@ -505,8 +505,6 @@ exports.single = async (req, res) => {
         }
       })
 
-      console.log(single)
-
       if (single) {
         const { produtos, local } = single
 
@@ -600,7 +598,7 @@ exports.single = async (req, res) => {
                       }
                     }
   
-                    // (END) ANALIZAR SE OS VALORES ESTAO CERTOS
+                    // (DESC) ANALIZAR SE OS VALORES ESTAO CERTOS
                     
                     const my_last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
                       return (String(single._id) === String(history_supermercado_id._id))
@@ -610,39 +608,37 @@ exports.single = async (req, res) => {
                       return (String(single._id) !== String(history_supermercado_id._id))
                     })
                     
-                    if (my_last_price) {
-                      if (last_price) {
+                    if (last_price) {
 
-                        if (+last_price.preco_u >= +my_last_price.preco_u) {
-                          // menor preco
+                      if (+last_price.preco_u >= +preco_u) {
+                        // menor preco
 
-                          const latest_of_all_supermarkets = price.historico.filter(({ supermercado_id: id1 }, index) => {
-                            return price.historico.findIndex(({ supermercado_id: id2 }) => {
-                              return String(id2._id) === String(id1._id)
-                            }) === index
+                        const latest_of_all_supermarkets = price.historico.filter(({ supermercado_id: id1 }, index) => {
+                          return price.historico.findIndex(({ supermercado_id: id2 }) => {
+                            return String(id2._id) === String(id1._id)
+                          }) === index
+                        })
+
+                        let best_of_history_sorted = latest_of_all_supermarkets
+                          .filter(({ supermercado_id: history_supermercado_id }) => {
+                            return (String(single._id) !== String(history_supermercado_id._id))
                           })
-  
-                          let best_of_history_sorted = latest_of_all_supermarkets
-                            .filter(({ supermercado_id: history_supermercado_id }) => {
-                              return (String(single._id) !== String(history_supermercado_id._id))
-                            })
-                            .sort((a, b) => +b.preco_u - +a.preco_u)
-  
-                          const best_of_history = best_of_history_sorted[best_of_history_sorted.length - 1]
-  
-                          if (+best_of_history.preco_u >= +my_last_price.preco_u) {
-                            // response.melhores_precos.push(response_item)
-                            classification.melhores_precos.push(response_item)
-                          }
-            
-                        } else if (+last_price.preco_u < +my_last_price.preco_u) {
-                          // maior preco
-            
-                          classification.piores_precos.push(response_item)
-                        } 
-                      } else {
-                        classification.melhores_precos.push(response_item)
-                      }
+                          .sort((a, b) => +b.preco_u - +a.preco_u)
+
+                        const best_of_history = best_of_history_sorted[best_of_history_sorted.length - 1]
+
+                        if (+best_of_history.preco_u >= +preco_u) {
+                          // response.melhores_precos.push(response_item)
+                          classification.melhores_precos.push(response_item)
+                        }
+          
+                      } else if (+last_price.preco_u < +preco_u) {
+                        // maior preco
+          
+                        classification.piores_precos.push(response_item)
+                      } 
+                    } else {
+                      classification.melhores_precos.push(response_item)
                     }
   
                   } else {
@@ -742,6 +738,7 @@ exports.updateProducts = async ({ data, _id, db }) => {
       if (product_in_request) {
         return {
           ...product,
+          api: true,
           preco_u: product_in_request.preco_u,
           atualizado: product_in_request.atualizado
         }
@@ -761,7 +758,8 @@ exports.updateProducts = async ({ data, _id, db }) => {
             _id: new ObjectId(produto_id._id)
           },
           preco_u,
-          atualizado
+          atualizado,
+          api: true
         })
       }
     })

@@ -83,7 +83,7 @@ exports.finishShopping = async (req, res) => {
         const props = req.body.products
     
         const {
-          data = [], local, moment, campo, supermercado_id, supermercado_nome, finished
+          data = [], local, moment, campo, supermercado_id, finished
         } = props
     
       // console.log('updateMany', req.body)
@@ -95,7 +95,7 @@ exports.finishShopping = async (req, res) => {
               if (campo == 'precos') {
                 await productControllers.updatePrices({
                   _id: produto_id._id,
-                  local, moment, preco_u: data.preco_u, supermercado_id, supermercado_nome, 
+                  local, moment, preco_u: data.preco_u, supermercado_id, 
                   finished, db: req.db, push_token: req.body.push_token
                 })
               }

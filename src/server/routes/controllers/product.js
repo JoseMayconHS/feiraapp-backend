@@ -16,7 +16,7 @@ exports.save = async ({
 			cache_id = 0, precos = [], status, nivel = 4
 		} = data
 
-		console.log('product.save()', data)
+		// console.log('product.save()', data)
 
 		const { tipo: peso_tipo } = peso
 
@@ -111,8 +111,6 @@ exports.save = async ({
 			try {
 				const already = await db.product.findOne({ nome_key: item.nome_key })
 
-				console.log({ already, item })
-
 				if (already) {
 
 					const verifyType = () => {
@@ -161,12 +159,12 @@ exports.save = async ({
 						}
 					}
 
-					console.log(item.nome, {
-						Brand: verifyBrand(),
-						Type: verifyType(),
-						Flavor: verifyFlavor(),
-						Weight: verifyWeight()
-					}, { already: !!response })
+					// console.log(item.nome, {
+					// 	Brand: verifyBrand(),
+					// 	Type: verifyType(),
+					// 	Flavor: verifyFlavor(),
+					// 	Weight: verifyWeight()
+					// }, { already: !!response })
 				}
 
 			} catch (e) {
@@ -225,6 +223,9 @@ exports._update = async ({
 
 		if (mongo_data) {
 
+			let history_latest_by_supermarket = [],
+			history_reversed = []
+
 			const mongo_precos = mongo_data.precos
 			const precos = data.precos
 
@@ -249,84 +250,14 @@ exports._update = async ({
 
 					// (EX) SE ESTA FUNCIONANDO CERTO
 					// console.log('historico antes')
+					// (END) MOVER LOGICA PARA ATUALIZAR OS PRECOS NO SUPERMERCADO NO FINAL
+					history_reversed = price.historico
+						.filter(historico => String(historico.supermercado_id._id).length)
+						.reverse()
 
-					const updatePricesInSupermarkets = price.historico
-						.filter(historico => historico.supermercado_id._id.length)
-						.map(({ preco_u, supermercado_id, atualizado }) => ({
-							async fn() {
-								try {
-									const supermarket = await db.supermarket.findOne({
-										_id: new ObjectId(supermercado_id._id)
-									}, { produtos: 1, nome: 1 })
+					history_latest_by_supermarket = history_reversed
+						.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
 
-									let products = supermarket.produtos
-
-									// console.log('updatePricesInSupermarkets products', products)
-
-									const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(mongo_data._id))
-
-									if (!atualizado) {
-										if (moment) {
-											atualizado = moment
-										} else {
-											atualizado = functions.date()
-										}
-									}
-
-									if (productIndex !== -1) {
-										products[productIndex].preco_u = preco_u
-										products[productIndex].atualizado = atualizado
-									} else {
-										products = [...products, {
-											produto_id: {
-												_id: new ObjectId(mongo_data._id),
-												cache_id: 0
-											},
-											preco_u, atualizado
-										}]
-									}
-
-									const produtos = await db.product.aggregate([{
-										$match: {
-											_id: {
-												$in: products
-													.filter(({ produto_id: { _id } }) => String(_id).length)
-													.map(({ produto_id: { _id } }) => new ObjectId(_id))
-											}
-										}
-									}, {
-										$project: {
-											_id: 1
-										}
-									}]).toArray()
-
-									// (DET) IMPEDIR QUE OS PRODUTOS DO SUPERMERCADO TENHA PRODUTOS QUE JÁ FORAM EXCLUIDOS
-									products = products.filter(({ produto_id }) => produtos.some(({ _id }) => String(_id) === String(produto_id._id)))
-
-									await db.supermarket.updateOne({
-										_id: new ObjectId(supermercado_id._id)
-									}, {
-										$set: { produtos: products }
-									})
-
-									await pushNotificationControllers
-										.notify({
-											_id: mongo_data ? mongo_data._id : data.api_id,
-											produto_nome: mongo_data ? mongo_data.nome : data.nome,
-											produto_peso: mongo_data ? mongo_data.peso : data.peso,
-											produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
-											preco_u, local,
-											supermercado_nome: supermarket.nome,
-											moment: atualizado, db, push_token
-										})
-
-								} catch (e) {
-									console.error(e)
-								}
-							}
-						}))
-
-					await functions.middlewareAsync(...updatePricesInSupermarkets)
 
 					price.historico = functions.sortHistoric([...price.historico, ...mongo_price.historico])
 
@@ -350,6 +281,7 @@ exports._update = async ({
 							mongo_price.maior_preco.preco_u = mongo_price.menor_preco.preco_u
 							mongo_price.maior_preco.supermercado_id = mongo_price.menor_preco.supermercado_id
 							mongo_price.maior_preco.data = mongo_price.menor_preco.data
+							mongo_price.maior_preco.api = true
 						} else if (
 							// (DESC) CASO O menor_preco SEJA ATUALIZADO SÓ PORQUE ESTÁ VENCIDO, ZERAR O maior_preco PRA NÃO TER INCONCISTÊNCIA
 							functions.daysAgo(mongo_price.menor_preco.data) > process.env.DAYS_AGO
@@ -366,6 +298,7 @@ exports._update = async ({
 						mongo_price.menor_preco.preco_u = price.menor_preco.preco_u
 						mongo_price.menor_preco.supermercado_id = price.menor_preco.supermercado_id
 						mongo_price.menor_preco.data = new Date
+						mongo_price.menor_preco.api = true
 					} else if (
 						+mongo_price.maior_preco.preco_u === 0 ||
 						+price.maior_preco.preco_u > +mongo_price.maior_preco.preco_u ||
@@ -380,6 +313,7 @@ exports._update = async ({
 						}
 
 						mongo_price.maior_preco.data = new Date
+						mongo_price.maior_preco.api = true
 					}
 
 					mongo_price.historico = price.historico
@@ -417,6 +351,18 @@ exports._update = async ({
 							_id: String(price.menor_preco.supermercado_id._id).length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
 						}
 
+						price.maior_preco.api = !!String(price.maior_preco.supermercado_id._id).length
+						price.menor_preco.api = !!String(price.menor_preco.supermercado_id._id).length
+
+						price.historico = price.historico.filter(historico => !historico.api)
+
+						history_reversed = price.historico
+							.filter(historico => String(historico.supermercado_id._id).length)
+							.reverse()
+
+						history_latest_by_supermarket = history_reversed
+							.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
+
 						const _result = {
 							cidade_id: local.cidade._id,
 							menor_preco: {
@@ -433,7 +379,7 @@ exports._update = async ({
 								},
 								preco_u: '0'
 							},
-							historico: functions.sortHistoric(price.historico) || []
+							historico: functions.sortHistoric(price.historico || [])
 						}
 
 						state.cidades.push(_result)
@@ -461,6 +407,18 @@ exports._update = async ({
 							_id: String(price.menor_preco.supermercado_id._id).length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
 						}
 
+						price.maior_preco.api = !!String(price.maior_preco.supermercado_id._id).length
+						price.menor_preco.api = !!String(price.menor_preco.supermercado_id._id).length
+
+						price.historico = price.historico.filter(historico => !historico.api)
+
+						history_reversed = price.historico
+							.filter(historico => String(historico.supermercado_id._id).length)
+							.reverse()
+
+						history_latest_by_supermarket = history_reversed
+							.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
+
 						const _result = {
 							estado_id: local.estado._id,
 							cidades: [{
@@ -479,7 +437,7 @@ exports._update = async ({
 									},
 									preco_u: '0'
 								},
-								historico: price.historico || []
+								historico: functions.sortHistoric(price.historico || [])
 							}]
 						}
 
@@ -490,15 +448,100 @@ exports._update = async ({
 
 			}
 
+			const updatePricesInSupermarkets = history_latest_by_supermarket
+				.map(({ preco_u, supermercado_id, atualizado }) => ({
+					async fn() {
+						try {
+							const supermarket = await db.supermarket.findOne({
+								_id: new ObjectId(supermercado_id._id)
+							}, { produtos: 1, nome: 1 })
+
+							let products = supermarket.produtos
+
+							// console.log('updatePricesInSupermarkets products')
+							// console.log(products)
+
+							const productIndex = products.findIndex(({ produto_id }) => String(produto_id._id) === String(mongo_data._id))
+
+							if (!atualizado) {
+								if (moment) {
+									atualizado = moment
+								} else {
+									atualizado = functions.date()
+								}
+							}
+
+							if (productIndex !== -1) {
+								products[productIndex].preco_u = preco_u
+								products[productIndex].atualizado = atualizado
+							} else {
+								products = [...products, {
+									produto_id: {
+										_id: new ObjectId(mongo_data._id),
+										cache_id: 0
+									},
+									preco_u, atualizado
+								}]
+							}
+
+							const produtos = await db.product.aggregate([{
+								$match: {
+									_id: {
+										$in: products
+											.filter(({ produto_id: { _id } }) => String(_id).length)
+											.map(({ produto_id: { _id } }) => new ObjectId(_id))
+									}
+								}
+							}, {
+								$project: {
+									_id: 1
+								}
+							}]).toArray()
+
+							// (DET) IMPEDIR QUE OS PRODUTOS DO SUPERMERCADO TENHA PRODUTOS QUE JÁ FORAM EXCLUIDOS
+							products = products.filter(({ produto_id }) => produtos.some(({ _id }) => String(_id) === String(produto_id._id)))
+
+							// console.log('antes de atualizar os produtos do supermercado')
+							// console.log(products)
+
+							await db.supermarket.updateOne({
+								_id: new ObjectId(supermercado_id._id)
+							}, {
+								$set: { produtos: products }
+							})
+
+							await pushNotificationControllers
+								.notify({
+									_id: mongo_data ? mongo_data._id : data.api_id,
+									produto_nome: mongo_data ? mongo_data.nome : data.nome,
+									produto_peso: mongo_data ? mongo_data.peso : data.peso,
+									produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
+									preco_u, local,
+									supermercado_nome: supermarket.nome,
+									moment: atualizado, db, push_token
+								})
+
+						} catch (e) {
+							console.error(e)
+						}
+					}
+				}))
+
+			await functions.middlewareAsync(...updatePricesInSupermarkets)
+
 			// // console.log('product._update end', { mongo_precos })
 
 			const updateData = { precos: mongo_precos, nivel: mongo_precos && mongo_data.nivel > 2 ? 2 : mongo_data.nivel }
+
+			const precos_response = [
+				mongo_precos[state_index]
+			]
 
 			await db.product.updateOne({
 				_id: new ObjectId(mongo_data ? mongo_data._id : data.api_id)
 			}, { $set: updateData })
 
-			response = { ...mongo_data, ...updateData }
+			response = { ...mongo_data, ...updateData, precos: precos_response }
 		}
 
 		return { ...response, cache_id: data.cache_id }
@@ -521,177 +564,195 @@ exports.updatePrices = async ({
 
 		const supermercado = await db.supermarket.findOne({
 			_id: new ObjectId(supermercado_id._id)
-		}, { _id: 1 })
+		}, { _id: 1, produtos: 1, nome: 1, local: 1 })
 
 		if (produto && supermercado) {
-			const { estado, cidade } = local
 
-			const prices = [...produto.precos]
+			const updateInProduct = async () => {
+				try {
+					const { estado, cidade } = supermercado.local
 
-			let newPrices = []
+					const prices = [...produto.precos]
 
-			if (!moment) {
-				moment = functions.date()
-			}
+					let newPrices = []
 
-			supermercado_id = {
-				cache_id: supermercado_id.cache_id,
-				_id: new ObjectId(supermercado_id._id)
-			}
-
-			const historico = {
-				data: moment,
-				preco_u,
-				supermercado_id
-			}
-
-			const state_index = prices.findIndex(preco => preco.estado_id === estado._id)
-
-			if (state_index !== -1) {
-				const state = prices[state_index]
-
-				const region_index = prices[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === cidade._id)
-
-				if (region_index !== -1) {
-					const price = prices[state_index].cidades[region_index]
-
-					price.historico = functions.sortHistoric([historico, ...price.historico])
-
-					// (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
-					// IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
-
-					if (
-						+price.menor_preco.preco_u === 0 ||
-						+price.menor_preco.preco_u > +preco_u ||
-						functions.daysAgo(price.menor_preco.data) > process.env.DAYS_AGO
-					) {
-						if (
-							+price.maior_preco.preco_u === 0 ||
-							(
-								functions.daysAgo(price.maior_preco.data) > process.env.DAYS_AGO &&
-								functions.daysAgo(price.menor_preco.data) < process.env.DAYS_AGO
-							)
-						) {
-							price.maior_preco.preco_u = price.menor_preco.preco_u
-							price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
-							price.maior_preco.data = price.menor_preco.data
-						} else if (
-							// (DESC) CASO O menor_preco SEJA ATUALIZADO SÓ PORQUE ESTÁ VENCIDO, ZERAR O maior_preco PRA NÃO TER INCONCISTÊNCIA
-							functions.daysAgo(price.menor_preco.data) > process.env.DAYS_AGO
-						) {
-							price.maior_preco = {
-								supermercado_id: {
-									_id: '',
-									cache_id: 0
-								},
-								preco_u: '0'
-							}
-						}
-
-						price.menor_preco.preco_u = preco_u
-						price.menor_preco.supermercado_id = supermercado_id
-						price.menor_preco.data = new Date
-
-					} else if (
-						+price.maior_preco.preco_u === 0 ||
-						+price.maior_preco.preco_u < +preco_u ||
-						functions.daysAgo(price.maior_preco.data) > process.env.DAYS_AGO
-					) {
-
-						price.maior_preco.preco_u = preco_u
-						price.maior_preco.supermercado_id = supermercado_id
-						price.maior_preco.data = new Date
+					if (!moment) {
+						moment = functions.date()
 					}
 
-					const cidades = prices[state_index].cidades
-
-					price.maior_preco.supermercado_id = {
-						...price.maior_preco.supermercado_id,
-						_id: String(price.maior_preco.supermercado_id._id).length ? new ObjectId(price.maior_preco.supermercado_id._id) : ''
+					supermercado_id = {
+						cache_id: supermercado_id.cache_id,
+						_id: new ObjectId(supermercado_id._id)
 					}
 
-					price.menor_preco.supermercado_id = {
-						...price.menor_preco.supermercado_id,
-						_id: String(price.menor_preco.supermercado_id._id).length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
-					}
-
-					cidades.splice(region_index, 1, price)
-
-					prices[state_index].cidades = cidades
-				} else {
-					// SE NAO TIVER ESSE cidade
-
-					const menor_preco = {
-						data: new Date,
+					const historico = {
+						api: true,
+						data: moment,
 						preco_u,
 						supermercado_id
 					}
 
-					const maior_preco = {
-						supermercado_id: {
-							_id: '',
-							cache_id: 0
-						}, preco_u: '0'
+					const state_index = prices.findIndex(preco => preco.estado_id === estado.cache_id)
+
+					if (state_index !== -1) {
+						const state = prices[state_index]
+
+						const region_index = prices[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === cidade.cache_id)
+
+						if (region_index !== -1) {
+							const price = prices[state_index].cidades[region_index]
+
+							price.historico = functions.sortHistoric([historico, ...price.historico])
+
+							// (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
+							// IMPEDIR QUE UM PREÇO FIQUE SEMPRE COMO MENOR PREÇO POR CONTA DA INFLAÇÃO (VALORES TENDEM A SUBIR)
+
+							if (
+								+price.menor_preco.preco_u === 0 ||
+								+price.menor_preco.preco_u > +preco_u ||
+								functions.daysAgo(price.menor_preco.data) > process.env.DAYS_AGO
+							) {
+								if (
+									+price.maior_preco.preco_u === 0 ||
+									(
+										functions.daysAgo(price.maior_preco.data) > process.env.DAYS_AGO &&
+										functions.daysAgo(price.menor_preco.data) < process.env.DAYS_AGO
+									)
+								) {
+									price.maior_preco.preco_u = price.menor_preco.preco_u
+									price.maior_preco.supermercado_id = price.menor_preco.supermercado_id
+									price.maior_preco.data = price.menor_preco.data
+									price.maior_preco.api = true
+								} else if (
+									// (DESC) CASO O menor_preco SEJA ATUALIZADO SÓ PORQUE ESTÁ VENCIDO, ZERAR O maior_preco PRA NÃO TER INCONCISTÊNCIA
+									functions.daysAgo(price.menor_preco.data) > process.env.DAYS_AGO
+								) {
+									price.maior_preco = {
+										supermercado_id: {
+											_id: '',
+											cache_id: 0
+										},
+										preco_u: '0',
+										api: false
+									}
+								}
+
+								price.menor_preco.preco_u = preco_u
+								price.menor_preco.supermercado_id = supermercado_id
+								price.menor_preco.data = new Date
+								price.menor_preco.api = true
+
+							} else if (
+								+price.maior_preco.preco_u === 0 ||
+								+price.maior_preco.preco_u < +preco_u ||
+								functions.daysAgo(price.maior_preco.data) > process.env.DAYS_AGO
+							) {
+
+								price.maior_preco.preco_u = preco_u
+								price.maior_preco.supermercado_id = supermercado_id
+								price.maior_preco.data = new Date
+								price.maior_preco.api = true
+							}
+
+							const cidades = prices[state_index].cidades
+
+							price.maior_preco.supermercado_id = {
+								...price.maior_preco.supermercado_id,
+								_id: String(price.maior_preco.supermercado_id._id).length ? new ObjectId(price.maior_preco.supermercado_id._id) : ''
+							}
+
+							price.menor_preco.supermercado_id = {
+								...price.menor_preco.supermercado_id,
+								_id: String(price.menor_preco.supermercado_id._id).length ? new ObjectId(price.menor_preco.supermercado_id._id) : ''
+							}
+
+							cidades.splice(region_index, 1, price)
+
+							prices[state_index].cidades = cidades
+						} else {
+							// SE NAO TIVER ESSE cidade
+
+							const menor_preco = {
+								api: true,
+								data: new Date,
+								preco_u,
+								supermercado_id
+							}
+
+							const maior_preco = {
+								supermercado_id: {
+									_id: '',
+									cache_id: 0
+								}, preco_u: '0', api: false
+							}
+
+							const _result = {
+								cidade_id: cidade.cache_id,
+								menor_preco,
+								maior_preco,
+								historico: [historico]
+							}
+
+							state.cidades.push(_result)
+
+							prices.splice(state_index, 1, state)
+						}
+					} else {
+						// SE NAO TIVER ESSE ESTADO
+
+						const menor_preco = {
+							api: true,
+							data: new Date,
+							preco_u,
+							supermercado_id
+						}
+
+						const maior_preco = {
+							supermercado_id: {
+								_id: '',
+								cache_id: 0
+							}, preco_u: '0', api: false
+						}
+
+						const _result = {
+							estado_id: estado.cache_id,
+							cidades: [{
+								cidade_id: cidade.cache_id,
+								menor_preco,
+								maior_preco,
+								historico: [historico]
+							}]
+						}
+
+						prices.push(_result)
 					}
 
-					const _result = {
-						cidade_id: cidade._id,
-						menor_preco,
-						maior_preco,
-						historico: [historico]
+					newPrices = [...prices]
+
+					const data_update = {
+						precos: newPrices
 					}
 
-					state.cidades.push(_result)
+					const updateData = { ...data_update, nivel: prices.length && produto.nivel > 2 ? 2 : produto.nivel }
 
-					prices.splice(state_index, 1, state)
+					await db.product.updateOne({
+						_id: new ObjectId(_id)
+					}, {
+						$set: updateData
+					})
+				} catch (e) {
+					console.log(e)
 				}
-			} else {
-				// SE NAO TIVER ESSE ESTADO
-
-				const menor_preco = {
-					data: new Date,
-					preco_u,
-					supermercado_id
-				}
-
-				const maior_preco = {
-					supermercado_id: {
-						_id: '',
-						cache_id: 0
-					}, preco_u: '0'
-				}
-
-				const _result = {
-					estado_id: estado._id,
-					cidades: [{
-						cidade_id: cidade._id,
-						menor_preco,
-						maior_preco,
-						historico: [historico]
-					}]
-				}
-
-				prices.push(_result)
 			}
 
-			newPrices = [...prices]
-
-			const data_update = {
-				precos: newPrices
-			}
-
-			const updateData = { ...data_update, nivel: prices.length && produto.nivel > 2 ? 2 : produto.nivel }
-
-			await db.product.updateOne({
-				_id: new ObjectId(_id)
-			}, {
-				$set: updateData
-			})
+			await updateInProduct()
 
 			await pushNotificationControllers
 				.notify({
-					_id, preco_u, local, moment, db,
-					supermercado_nome,
+					_id, preco_u, 
+					moment, db,
+					local: supermercado.local, 
+					supermercado_nome: supermercado.nome,
 					produto_nome: produto.nome,
 					produto_peso: produto.peso,
 					produto_sabor: produto.sabor,
@@ -1101,8 +1162,6 @@ exports.indexList = async (req, res) => {
 			}
 		}]
 
-		console.log(optionsMatch[0])
-
 		const optionsDocuments = [{
 			$sort: {
 				created_at: -1
@@ -1280,7 +1339,6 @@ exports.indexBy = async (req, res) => {
 		}
 
 		const then = async documents => {
-			console.log(documents)
 			res.status(200).json({ ok: true, data: documents, limit: limitQuery })
 		}
 
@@ -1384,10 +1442,6 @@ exports.indexBy = async (req, res) => {
 		}, {
 			$limit: limitQuery
 		}]
-
-		console.log({ no_page, allLevel })
-
-		console.log(optionsMatch)
 
 		const clean_search = async () => {
 			const documents = await req.db.product.aggregate([
