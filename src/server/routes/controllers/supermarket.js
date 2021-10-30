@@ -597,13 +597,7 @@ exports.single = async (req, res) => {
                         response_item.marca = mongo_marca.nome
                       }
                     }
-  
-                    // (DESC) ANALIZAR SE OS VALORES ESTAO CERTOS
-                    
-                    const my_last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
-                      return (String(single._id) === String(history_supermercado_id._id))
-                    })
-        
+          
                     const last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
                       return (String(single._id) !== String(history_supermercado_id._id))
                     })
@@ -628,7 +622,6 @@ exports.single = async (req, res) => {
                         const best_of_history = best_of_history_sorted[best_of_history_sorted.length - 1]
 
                         if (+best_of_history.preco_u >= +preco_u) {
-                          // response.melhores_precos.push(response_item)
                           classification.melhores_precos.push(response_item)
                         }
           

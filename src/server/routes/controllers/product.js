@@ -223,8 +223,7 @@ exports._update = async ({
 
 		if (mongo_data) {
 
-			let history_latest_by_supermarket = [],
-			history_reversed = []
+			let history_latest_by_supermarket = []
 
 			const mongo_precos = mongo_data.precos
 			const precos = data.precos
@@ -250,16 +249,16 @@ exports._update = async ({
 
 					// (EX) SE ESTA FUNCIONANDO CERTO
 					// console.log('historico antes')
-					// (END) MOVER LOGICA PARA ATUALIZAR OS PRECOS NO SUPERMERCADO NO FINAL
-					history_reversed = price.historico
+					const history_reversed = price.historico
 						.filter(historico => String(historico.supermercado_id._id).length)
-						.reverse()
 
-					history_latest_by_supermarket = history_reversed
+					history_latest_by_supermarket = history_reversed.reverse()
 						.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
 
 
 					price.historico = functions.sortHistoric([...price.historico, ...mongo_price.historico])
+
+					console.log('price.historico', price.historico)
 
 					// console.log('antes', { mongo_price, price })
 
@@ -356,11 +355,10 @@ exports._update = async ({
 
 						price.historico = price.historico.filter(historico => !historico.api)
 
-						history_reversed = price.historico
+						const history_reversed = price.historico
 							.filter(historico => String(historico.supermercado_id._id).length)
-							.reverse()
 
-						history_latest_by_supermarket = history_reversed
+						history_latest_by_supermarket = history_reversed.reverse()
 							.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
 
 						const _result = {
@@ -412,11 +410,10 @@ exports._update = async ({
 
 						price.historico = price.historico.filter(historico => !historico.api)
 
-						history_reversed = price.historico
+						const history_reversed = price.historico
 							.filter(historico => String(historico.supermercado_id._id).length)
-							.reverse()
 
-						history_latest_by_supermarket = history_reversed
+						history_latest_by_supermarket = history_reversed.reverse()
 							.filter(({ supermercado_id: { _id: id1 } }, index) => history_reversed.findIndex(({ supermercado_id: { _id: id2 } }) => String(id1) === String(id2) === index))
 
 						const _result = {
