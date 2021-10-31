@@ -15,7 +15,7 @@ module.exports = {
         },
         env_production: {
           'PORT': 3000,
-          'MONGO_URL':  'mongodb+srv://user_production:ncZwS2qJrnBnK4QB@feira-app-producao.90cyd.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
+          'MONGO_URL':  'mongodb+srv://user_production:ncZwS2qJrnBnK4QB@feira-app-producao.90cyd.mongodb.net/app?retryWrites=true&w=majority',
           'WORD_SECRET': 'feiraapp-avaliable',
           'LIMIT_PAGINATION': 20,
           'NODE_ENV': 'production',
