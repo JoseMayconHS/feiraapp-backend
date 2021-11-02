@@ -6,7 +6,7 @@ const { ObjectId }= require('mongodb'),
 exports.save = async ({ data, hash_identify_device = '', db }) => {
   try {
     const { 
-      nome, local, produtos = [], cache_id = 0, status, nivel = 4
+      nome, local, produtos = [], cache_id = 0, nivel = 4
     } = data
 
   // console.log('supermarket.save()', data)
@@ -26,7 +26,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
     
     const item = {
       nome: functions.camellize(nome), nome_key: functions.keyWord(nome),
-      cache_id, hash_identify_device, status, nivel,
+      cache_id, hash_identify_device, nivel,
       produtos: produtos.map(produto => ({
         ...produto,
         produto_id: {

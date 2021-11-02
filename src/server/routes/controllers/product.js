@@ -13,7 +13,7 @@ exports.save = async ({
 			peso = {}, nome, sabor, tipo, sem_marca,
 			marca: marca_obj,
 			marca_id: marca = {},
-			cache_id = 0, precos = [], status, nivel = 4
+			cache_id = 0, precos = [], nivel = 4
 		} = data
 
 		// console.log('product.save()', data)
@@ -79,7 +79,7 @@ exports.save = async ({
 
 		const item = {
 			nome, nome_key: functions.keyWord(nome),
-			sem_marca, cache_id, hash_identify_device, precos, status, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
+			sem_marca, cache_id, hash_identify_device, precos, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
 			tipo, sabor: { definido: false },
 			created_at: Date.now()
 		}
