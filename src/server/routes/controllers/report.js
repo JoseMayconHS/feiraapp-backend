@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongodb'),
-  { optionsCounted } = require('../../../utils')
+  { optionsCounted } = require('../../../utils'),
+  limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.store = async (req, res) => {
   try {
@@ -63,11 +64,20 @@ exports.storeList = async (req, res) => {
 
 exports.index = async (req, res) => {
   try {
-    let { page = 1 } = req.params
+    let { 
+      page = 1
+    } = req.params
 
-    const { _schema = 'produto', texto = '' } = req.query
+    const { _schema = 'produto', texto = ''  } = req.query
+    let { limit: limitQuery } = req.query
 
     page = +page
+
+    if (!limitQuery) {
+      limitQuery = limit
+    }
+
+    limitQuery = +limitQuery
     
     const options = [{
       $sort: {
@@ -93,9 +103,9 @@ exports.index = async (req, res) => {
     })
 
     const optionsPaginated = [{
-      $skip: (limit * page) - limit
+      $skip: (limitQuery * page) - limitQuery
     }, {
-      $limit: limit 
+      $limit: limitQuery 
     }]
 
     const optionsDocumentWithProductId = [{
@@ -194,7 +204,7 @@ exports.index = async (req, res) => {
       count = postsCounted[0].count
     }
 
-    res.status(200).json({ ok: true, data: documents, limit, count, page })
+    res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
 
   } catch(e) {
     console.error(e)

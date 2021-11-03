@@ -1523,17 +1523,24 @@ exports.update = async (req, res) => {
 		delete data._id
 
 		if (data.marca_id) {
+			data.sem_marca = !data.marca_id._id.length
+
 			data.marca_id = {
-				_id: new ObjectId(data.marca_id._id),
+				_id: data.marca_id._id.length ? new ObjectId(data.marca_id._id) : '',
 				cache_id: 0
 			}
-
-			data.sem_marca = false
 		}
 
-		const sem_marca = !(data.marca && data.marca.nome.length)
+		if (data.sem_marca) {
+			data.marca_id = {
+				_id: '',
+				cache_id: 0
+			}
+		}
 
-		if (!sem_marca) {
+		// const sem_marca = !(data.marca && data.marca.nome.length)
+
+		if (!data.sem_marca && data.marca) {
 			const marca_nome = data.marca.nome
 
 			let data_marca = await req.db.brand.findOne({
@@ -1556,9 +1563,7 @@ exports.update = async (req, res) => {
 				_id: data_marca._id,
 				cache_id: 0
 			}
-
-			data.sem_marca = sem_marca
-		}
+		}	
 
 		delete data.marca
 
