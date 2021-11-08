@@ -29,7 +29,7 @@ exports.save = async ({
 		}
 
 		if (functions.hasEmpty(checkEmpty)) {
-			return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+			throw new Error()
 		}
 
 		tipo.texto = functions.capitalize(tipo.texto)

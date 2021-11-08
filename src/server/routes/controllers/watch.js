@@ -5,9 +5,6 @@ exports.save = async ({
   data, hash_identify_device = '', db
 }) => {
   try {
-
-    let ok = false
-
     const {
       push_token,
       valor,
@@ -26,8 +23,6 @@ exports.save = async ({
     const checkEmpty = {
       cidade_nome, estado_nome, estado_sigla, valor, push_token
     }
-
-    // console.log(checkEmpty)
 
     if (functions.hasEmpty(checkEmpty)) {
       throw new Error()

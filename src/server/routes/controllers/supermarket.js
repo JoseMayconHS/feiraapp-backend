@@ -21,7 +21,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
     }
     
     if (functions.hasEmpty(checkEmpty)) {
-      return res.status(200).json({ ok: false, message: 'Existe campos vazios!' })
+      throw new Error()
     }
     
     const item = {
