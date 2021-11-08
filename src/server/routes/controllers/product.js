@@ -513,7 +513,16 @@ exports._update = async ({
 									produto_nome: mongo_data ? mongo_data.nome : data.nome,
 									produto_peso: mongo_data ? mongo_data.peso : data.peso,
 									produto_sabor: mongo_data ? mongo_data.sabor : data.sabor,
-									preco_u, local,
+									preco_u, local: {
+										estado: {
+											...local.estado,
+											cache_id: local.estado._id
+										},
+										cidade: {
+											...local.cidade,
+											cache_id: local.cidade._id
+										}
+									},
 									supermercado_nome: supermarket.nome,
 									moment: atualizado, db, push_token
 								})

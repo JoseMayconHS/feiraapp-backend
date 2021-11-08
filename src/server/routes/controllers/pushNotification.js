@@ -9,7 +9,7 @@ exports.notify = async ({
 }) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
-  console.log('notify', { _id, preco_u, local, moment, produto_nome, supermercado_nome, produto_peso, produto_sabor })
+    console.log('notify', { _id, preco_u, local, moment, produto_nome, supermercado_nome, produto_peso, produto_sabor })
 
     if (functions.hasEmpty({
       produto_nome, supermercado_nome
@@ -31,10 +31,10 @@ exports.notify = async ({
     // VERIFICAÇÃO NORMAL
     const $match = {
       'local.estado.cache_id': {
-        $in: [local.estado._id, 0]
+        $in: [local.estado.cache_id, 0]
       },
       'local.cidade.cache_id': {
-        $in: [local.cidade._id, 0]
+        $in: [local.cidade.cache_id, 0]
       },
     }
 
@@ -69,7 +69,7 @@ exports.notify = async ({
       }
     }]).toArray()
 
-  // console.log({ watches })
+    console.log({ watches })
 
     const { state_zero, normal } = watches[0]
 
