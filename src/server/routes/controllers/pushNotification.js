@@ -9,7 +9,7 @@ exports.notify = async ({
 }) => {
   try {
     // (END) VERIFICAR SE PRECISA NOTIFICAR ALGUEM SOBRE O NOVO PRECO
-    console.log('notify', { _id, preco_u, local, moment, produto_nome, supermercado_nome, produto_peso, produto_sabor })
+    // console.log('notify', { _id, preco_u, local, moment, produto_nome, supermercado_nome, produto_peso, produto_sabor })
 
     if (functions.hasEmpty({
       produto_nome, supermercado_nome
@@ -69,7 +69,7 @@ exports.notify = async ({
       }
     }]).toArray()
 
-    console.log({ watches })
+    // console.log({ watches })
 
     const { state_zero, normal } = watches[0]
 
