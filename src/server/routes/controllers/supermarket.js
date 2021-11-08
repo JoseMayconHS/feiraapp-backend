@@ -398,13 +398,17 @@ exports.index = async (req, res) => {
           const v = a.__media - b.__media
 
           if (a.__media) {
-            switch(true) {
-              case (v < 0):
-                return -1
-              case (v > 0):
-                return 1
-              default:
-                return 0
+            if (b.__media) {
+              switch(true) {
+                case (v < 0):
+                  return -1
+                case (v > 0):
+                  return -1
+                default:
+                  return 1
+              }
+            } else {
+              return -1
             }
           } else {
             return 1
