@@ -258,8 +258,6 @@ exports._update = async ({
 
 					price.historico = functions.sortHistoric([...price.historico, ...mongo_price.historico])
 
-					console.log('price.historico', price.historico)
-
 					// console.log('antes', { mongo_price, price })
 
 					// (END) VERIFICAR O TEMPO EM QUE FOI REGISTRADO E ZERAR OU ATUALIZAR POR UM MAIS RECENTE
