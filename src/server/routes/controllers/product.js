@@ -1184,8 +1184,7 @@ exports.indexList = async (req, res) => {
 			$replaceRoot: {
 				newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
 			}
-		}
-		]
+		}]
 
 		const documents = await req.db.product.aggregate([
 			...optionsMatch,

@@ -81,7 +81,7 @@ exports.notify = async ({
     .map(watch => ({
       async fn() {
         const notification = {
-          title: `${ produto_peso.tipo === 'pacote' ? 'Pacote de ' : '' }${ produto_nome }${ produto_sabor.definido ? ` de ${ produto_sabor.nome }, ` : ' ' }${ functions.getWeight(produto_peso) } por ${ (+preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
+          title: `${ produto_peso.tipo === 'pacote' ? 'Pacote de ' : '' }${ produto_nome }${ produto_sabor.definido ? ` sabor ${ produto_sabor.nome }, ` : ' ' }${ functions.getWeight(produto_peso) } por ${ (+preco_u).toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}) }`,
           body: `Em ${ supermercado_nome }(${ local.cidade.nome }/${ local.estado.sigla }) - ${ moment.dia< 10 ? `0${ moment.dia }` : moment.dia }/${ moment.mes < 10 ? `0${ moment.mes }` : moment.mes } - ${ moment.hora }`
         }
 
