@@ -159,12 +159,12 @@ exports.save = async ({
 						}
 					}
 
-					// console.log(item.nome, {
-					// 	Brand: verifyBrand(),
-					// 	Type: verifyType(),
-					// 	Flavor: verifyFlavor(),
-					// 	Weight: verifyWeight()
-					// }, { already: !!response })
+					console.log({item, already}, {
+						Brand: verifyBrand(),
+						Type: verifyType(),
+						Flavor: verifyFlavor(),
+						Weight: verifyWeight()
+					}, { already: !!response })
 				}
 
 			} catch (e) {
