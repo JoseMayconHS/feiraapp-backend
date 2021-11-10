@@ -10,7 +10,7 @@ exports.save = async ({
 	try {
 
 		const {
-			peso = {}, nome, sabor, tipo, sem_marca,
+			peso = {}, nome, sabor = {}, tipo, sem_marca,
 			marca: marca_obj,
 			marca_id: marca = {},
 			cache_id = 0, precos = [], nivel = 4
