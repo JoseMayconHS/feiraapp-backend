@@ -122,7 +122,7 @@ exports.save = async ({
 						return (item.tipo.texto_key === v.tipo.texto_key)
 					}
 
-					const verifyWeight = () => {
+					const verifyWeight = (v) => {
 						if (item.peso.tipo === v.peso.tipo) {
 							if (item.peso.valor == v.peso.valor && item.peso.force_down === v.peso.force_down) {
 								return true
