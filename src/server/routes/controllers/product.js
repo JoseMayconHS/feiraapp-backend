@@ -922,49 +922,47 @@ exports.all = async (req, res) => {
 				foreignField: '_id',
 				as: 'marca_obj'
 			}
-		},
-			// (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
-			// {
-			//   $unwind: '$marca_obj'
-			// }
-		]).toArray()
+		}]).toArray()
 
 		documents = documents.map(document => {
-
-			const preco = {
-				preco_u: '0',
-				supermercado_id: {
-					cache_id: 0,
-					_id: ''
-				}
-			}
-
-			const response = {
-				estado_id: uf,
-				cidades: [{
-					cidade_id: mn,
-					menor_preco: preco,
-					maior_preco: preco,
-					historico: []
-				}]
-			}
-
-			const state_index = document.precos.findIndex(({ estado_id }) => estado_id === uf)
-
-			if (state_index !== -1) {
-				const state = document.precos[state_index]
-
-				const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
-
-				if (region_index !== -1) {
-					const region = state.cidades[region_index]
-
-					response.cidades = [region]
-				}
-			}
-
 			// (DET) LOGICA DE ENTREGAR OU NÃO OS PREÇOS JÁ REGISTRADOS
-			document.precos = enable_prices ? [response] : []
+			if (noIds.some(_id => _id === String(document._id))) {
+				document.precos = []
+			} else {
+				const preco = {
+					preco_u: '0',
+					supermercado_id: {
+						cache_id: 0,
+						_id: ''
+					}
+				}
+	
+				const response = {
+					estado_id: uf,
+					cidades: [{
+						cidade_id: mn,
+						menor_preco: preco,
+						maior_preco: preco,
+						historico: []
+					}]
+				}
+	
+				const state_index = document.precos.findIndex(({ estado_id }) => estado_id === uf)
+	
+				if (state_index !== -1) {
+					const state = document.precos[state_index]
+	
+					const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
+	
+					if (region_index !== -1) {
+						const region = state.cidades[region_index]
+	
+						response.cidades = [region]
+					}
+				}
+
+				document.precos = [response]
+			}
 
 			return document
 		})
