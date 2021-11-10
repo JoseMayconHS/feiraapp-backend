@@ -104,6 +104,8 @@ exports.save = async ({
 			cache_id: 0
 		}
 
+		item.sem_marca = !data_marca
+
 		// console.log('product.save ', item)
 
 		const alreadyExists = async () => {
