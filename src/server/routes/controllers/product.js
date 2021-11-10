@@ -109,17 +109,22 @@ exports.save = async ({
 		const alreadyExists = async () => {
 			let response
 			try {
-				const already = await db.product.findOne({ nome_key: item.nome_key })
+				const already = await db.product.find({ 
+					nome_key: item.nome_key,
+					// peso: { valor: item.peso.valor, tipo: item.peso.tipo },
+					// tipo: { texto_key: item.tipo.texto_key },
+					// sabor: { texto_key: item.sabor.nome_key }
+				}).toArray()
 
-				if (already) {
+				if (already.length) {
 
-					const verifyType = () => {
-						return (item.tipo.texto_key === already.tipo.texto_key)
+					const verifyType = (v) => {
+						return (item.tipo.texto_key === v.tipo.texto_key)
 					}
 
 					const verifyWeight = () => {
-						if (item.peso.tipo === already.peso.tipo) {
-							if (item.peso.valor == already.peso.valor && item.peso.force_down === already.peso.force_down) {
+						if (item.peso.tipo === v.peso.tipo) {
+							if (item.peso.valor == v.peso.valor && item.peso.force_down === v.peso.force_down) {
 								return true
 							}
 						}
@@ -127,44 +132,48 @@ exports.save = async ({
 						return false
 					}
 
-					const verifyBrand = () => {
+					const verifyBrand = (v) => {
 						if (String(item.marca_id._id).length) {
-							return String(item.marca_id._id) === String(already.marca_id._id)
+							return String(item.marca_id._id) === String(v.marca_id._id)
 						} else {
-							return already.sem_marca
+							return v.sem_marca
 						}
 					}
 
-					const verifyFlavor = () => {
+					const verifyFlavor = (v) => {
 						if (item.sabor) {
-							if (item.sabor.definido && already.sabor.definido) {
-								return functions.keyWord(item.sabor.nome) === already.sabor.nome_key
+							if (item.sabor.definido && v.sabor.definido) {
+								return functions.keyWord(item.sabor.nome) === v.sabor.nome_key
 							} else {
-								return (item.sabor.definido === already.sabor.definido)
+								return (item.sabor.definido === v.sabor.definido)
 							}
 						} else {
-							return !already.sabor.definido
+							return !v.sabor.definido
 						}
 					}
 
-					if (String(item.marca_id._id).length) {
-						if (verifyBrand() && verifyWeight() && verifyType() && verifyFlavor()) {
-							response = already
-						}
-					} else {
-						if (already.sem_marca) {
-							if (verifyType() && verifyWeight() && verifyFlavor()) {
-								response = already
+					for (let i = 0; i < already.length; i++) {
+
+						console.log('i', i)
+
+						const v = already[i]
+
+						if (String(item.marca_id._id).length) {
+							if (verifyBrand(v) && verifyWeight(v) && verifyType(v) && verifyFlavor(v)) {
+								response = v
+							}
+						} else {
+							if (v.sem_marca) {
+								if (verifyType(v) && verifyWeight(v) && verifyFlavor(v)) {
+									response = v
+								}
 							}
 						}
+
+						if (response) break
 					}
 
-					console.log({item, already}, {
-						Brand: verifyBrand(),
-						Type: verifyType(),
-						Flavor: verifyFlavor(),
-						Weight: verifyWeight()
-					}, { already: !!response })
+					console.log({item, already}, { already: !!response })
 				}
 
 			} catch (e) {
