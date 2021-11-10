@@ -885,7 +885,7 @@ exports.index = async (req, res) => {
 		res.status(200).json({ ok: true, data: documents, limit: limitQuery, count, page })
 
 	} catch (err) {
-		console.log(err)
+		console.log('index()', err)
 		res.status(500).send()
 	}
 }
@@ -1175,12 +1175,7 @@ exports.indexList = async (req, res) => {
 				foreignField: '_id',
 				as: 'marca_obj'
 			}
-		},
-		// (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
-		// {
-		//   $unwind: '$marca_obj'
-		// },
-		{
+		}, {
 			$group: {
 				_id: '$_id',
 				doc: { $first: '$$ROOT' }
@@ -1238,7 +1233,7 @@ exports.indexBy = async (req, res) => {
 			const products_by_name = await req.db.product.aggregate([
 				{
 					$match: {
-						nome_key: { $regex: regex, $options: 'g' }
+						nome_key: { $regex: regex, $options: 'gi' }
 					}
 				}, {
 					$project: {
@@ -1402,31 +1397,7 @@ exports.indexBy = async (req, res) => {
 				foreignField: '_id',
 				as: 'marca_obj'
 			}
-		},
-		// {
-		//   $lookup: {
-		//     from: 'watch',
-		//     localField: '_id',
-		//     foreignField: 'produto_id._id',
-		//     pipeline: [{
-		//       $match: {
-		//         'push_token': push_token,
-		//         'local.estado.cache_id': {
-		//           $in: [+local.estado.cache_id, 0]
-		//         },
-		//         'local.cidade.cache_id': {
-		//           $in: [+local.cidade.cache_id, 0]
-		//         }
-		//       }
-		//     }],
-		//     as: 'notificacao'
-		//   }
-		// }, 
-		// (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
-		// {
-		//   $unwind: '$marca_obj'
-		// },
-		{
+		}, {
 			$group: {
 				_id: '$_id',
 				doc: { $first: '$$ROOT' }
@@ -1435,8 +1406,7 @@ exports.indexBy = async (req, res) => {
 			$replaceRoot: {
 				newRoot: { $mergeObjects: ['$doc', { precos: [] }] }
 			}
-		}
-		]
+		}]
 
 		const optionsPaginated = [{
 			$skip: (limitQuery * page) - limitQuery
@@ -1506,7 +1476,7 @@ exports.indexBy = async (req, res) => {
 		}
 
 	} catch (error) {
-		console.error(error)
+		console.log('indexBy()', error)
 		res.status(500).send()
 	}
 
