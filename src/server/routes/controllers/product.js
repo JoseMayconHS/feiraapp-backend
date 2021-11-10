@@ -826,7 +826,7 @@ exports.index = async (req, res) => {
 				const regex = new RegExp(functions.keyWord(nome))
 
 				$match.nome_key = {
-					$regex: regex, $options: 'gi'
+					$regex: regex
 				}
 			}
 
@@ -1233,7 +1233,7 @@ exports.indexBy = async (req, res) => {
 			const products_by_name = await req.db.product.aggregate([
 				{
 					$match: {
-						nome_key: { $regex: regex, $options: 'gi' }
+						nome_key: { $regex: regex }
 					}
 				}, {
 					$project: {

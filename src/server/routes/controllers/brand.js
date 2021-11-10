@@ -135,7 +135,7 @@ exports.index = async (req, res) => {
       // const name_regex = new RegExp(functions.keyWord(body.where.nome))
       const name_regex = new RegExp(functions.keyWord(nome))
 
-      $match.nome_key = { $regex: name_regex, $options: 'g' }
+      $match.nome_key = { $regex: name_regex }
     }
 
     if (nivel) {
@@ -262,7 +262,7 @@ exports.indexBy = async (req, res) => {
     if (where.nome.length) {
       const name_regex = new RegExp(functions.keyWord(where.nome))
 
-      $match.nome_key = { $regex: name_regex, $options: 'g' }
+      $match.nome_key = { $regex: name_regex }
     }
 
     const options = [{

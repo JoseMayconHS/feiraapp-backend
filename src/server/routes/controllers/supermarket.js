@@ -301,7 +301,7 @@ exports.index = async (req, res) => {
         const regex = new RegExp(functions.keyWord(nome))
 
         $match.nome_key = {
-          $regex: regex, $options: 'gi'
+          $regex: regex
         }
       }
 
@@ -326,7 +326,7 @@ exports.index = async (req, res) => {
       if (where.nome) {
         const regex = new RegExp(functions.keyWord(where.nome))
 
-        $match.nome_key = { $regex: regex, $options: 'gi' }
+        $match.nome_key = { $regex: regex }
       }
 
       if (where.favorito) {

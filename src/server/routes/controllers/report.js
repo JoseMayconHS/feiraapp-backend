@@ -89,7 +89,7 @@ exports.index = async (req, res) => {
       const $match = {}
       const name_regex = new RegExp(functions.keyWord(texto))
 
-      $match.texto = { $regex: name_regex, $options: 'g' }
+      $match.texto = { $regex: name_regex }
 
       options.unshift({
         $match
