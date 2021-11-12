@@ -1017,7 +1017,7 @@ exports.single = async (req, res) => {
 			options.projection = functions.stringToObj(select)
 		}
 
-		const single = await req.db.product.findOne({
+		let single = await req.db.product.findOne({
 			_id: new ObjectId(id),
 			nivel: {
 				$in: [1, 2]
