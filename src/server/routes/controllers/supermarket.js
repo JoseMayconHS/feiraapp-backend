@@ -348,8 +348,10 @@ exports.index = async (req, res) => {
     const options = [{
       $match
     }, {
-      $sort: {
+      $sort: !!req.payload ? {
         created_at: -1
+      } : {
+        nome_key: 1
       }
     }, {
       $group: {
