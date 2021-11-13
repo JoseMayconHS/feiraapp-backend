@@ -997,7 +997,7 @@ exports.single = async (req, res) => {
 		} = req.query
 
 		const {
-			local,
+			local, allLevel,
 			undefineds = []
 		} = req.body
 
@@ -1011,24 +1011,50 @@ exports.single = async (req, res) => {
 		// console.log('product.single params', req.params)
 		// console.log('product.single body', req.body)
 
-		const options = {}
+		const options = [{
+			$match: {
+				_id: new ObjectId(id),
+				nivel: {
+					$in: allLevel ? [1, 2, 3, 4] : [1, 2]
+				}
+			}
+		}]
 
 		if (select.length) {
-			options.projection = functions.stringToObj(select)
+			options.push({
+				$project: functions.stringToObj(select)
+			})
 		}
 
-		let single = await req.db.product.findOne({
-			_id: new ObjectId(id),
-			nivel: {
-				$in: [1, 2]
-			}
-		}, options)
+		if (target === 'app-update-product') {
+			options.push({
+				$lookup: {
+					from: 'brand',
+					foreignField: '_id',
+					localField: 'marca_id._id',
+					as: 'marca_obj'
+				}
+			})
+		}
 
-		if (single) {
+		let single = await req.db.product.aggregate(options).toArray()
+
+		if (single.length) {
+			single = single[0]
+			
 			switch (target) {
 				case 'app-single-product':
 				case 'app-prices-update':
+				case 'app-update-product':
 					const prices = single.precos
+					let product
+
+					if (target === 'app-update-product') {
+						product = {
+							...single,
+							precos: []
+						}
+					}
 
 					const { estado = {}, cidade = {} } = local
 
@@ -1064,8 +1090,6 @@ exports.single = async (req, res) => {
 							}
 
 							if (target === 'app-single-product') {
-
-								// (END) REFATORAR PARA UMA UNICA CONSULTA
 								const historic_paginaed = region.historico.slice((page * limitQuery) - limitQuery, (page * limitQuery))
 
 								const supermarketsMiddleware = historic_paginaed.map((preco, index) => ({
@@ -1093,10 +1117,7 @@ exports.single = async (req, res) => {
 												_id: 0,
 												api: true,
 												api_id: supermarket._id
-											},
-											// preco_u: preco.preco,
-											// supermercado_id: preco.supermercado_id,
-											// data: preco.data
+											}
 										}
 									}
 								}))
@@ -1107,10 +1128,11 @@ exports.single = async (req, res) => {
 							}
 						}
 					}
+
 					res.status(200).json({
 						ok: true, data: historic,
 						menor_preco, range,
-						limit: limitQuery, count
+						limit: limitQuery, count, product
 					})
 					break
 				case 'app-single-product-watch':

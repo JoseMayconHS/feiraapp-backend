@@ -88,7 +88,8 @@ exports.notify = async ({
           await firebase.messaging()
             .sendToDevice(watch.push_token, {
               data: {
-                produto_id: String(_id)
+                produto_id: String(_id),
+                update: true
               }, notification
             })
         } catch(e) {
