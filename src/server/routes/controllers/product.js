@@ -182,6 +182,8 @@ exports.save = async ({
 				console.error('product.alreadyExists()', e)
 			} finally {
 
+				console.log('response', response)
+
 				return response
 			}
 		}
@@ -198,7 +200,7 @@ exports.save = async ({
 				})
 			}
 
-			const updateData = { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : response.nivel }
+			const updateData = { cache_id, hash_identify_device, nivel: response.nivel !== 1 && nivel > 2 ? 2 : response.nivel }
 
 			await db.product.updateOne({
 				_id: response._id
