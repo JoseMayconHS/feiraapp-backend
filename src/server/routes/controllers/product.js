@@ -135,11 +135,7 @@ exports.save = async ({
 					}
 
 					const verifyBrand = (v) => {
-						if (String(item.marca_id._id).length) {
-							return String(item.marca_id._id) === String(v.marca_id._id)
-						} else {
-							return v.sem_marca
-						}
+						return String(item.marca_id._id) === String(v.marca_id._id)
 					}
 
 					const verifyFlavor = (v) => {
@@ -150,15 +146,17 @@ exports.save = async ({
 								return (item.sabor.definido === v.sabor.definido)
 							}
 						} else {
-							return !v.sabor.definido
+							return false
 						}
 					}
 
+					console.log('item', item)
+
 					for (let i = 0; i < already.length; i++) {
 
-						console.log('i', i)
-
+						
 						const v = already[i]
+						console.log('v', v)
 
 						if (String(item.marca_id._id).length) {
 							if (verifyBrand(v) && verifyWeight(v) && verifyType(v) && verifyFlavor(v)) {
