@@ -154,13 +154,9 @@ exports.save = async ({
 						}
 					}
 
-					console.log('item', item)
-
 					for (let i = 0; i < already.length; i++) {
 
-						
 						const v = already[i]
-						console.log('v', v)
 
 						if (String(item.marca_id._id).length) {
 							if (verifyBrand(v) && verifyWeight(v) && verifyType(v) && verifyFlavor(v)) {
@@ -183,9 +179,6 @@ exports.save = async ({
 			} catch (e) {
 				console.error('product.alreadyExists()', e)
 			} finally {
-
-				console.log('response', response)
-
 				return response
 			}
 		}

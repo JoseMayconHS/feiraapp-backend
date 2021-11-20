@@ -58,10 +58,6 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
           projection: { local: 1 }
         })
 
-        console.log('already', already)
-        console.log('estado_id', estado_id)
-        console.log('cidade_id', cidade_id)
-
         if (already) {
           if (already.local.estado.cache_id === estado_id) {
             if (already.local.cidade.cache_id === cidade_id) {
@@ -73,7 +69,6 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
       } catch(e) {
         console.error('supermarket.alreadyExists()', e)
       } finally {
-        console.log('response', response)
         return response
       }
     }
