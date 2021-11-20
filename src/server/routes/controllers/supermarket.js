@@ -62,7 +62,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
 
         if (already) {
           if (already.local.estado.cache_id === estado_id) {
-            if (already.local.cidade_id.cache_id === cidade_id) {
+            if (already.local.cidade.cache_id === cidade_id) {
               response = already
             }
           }
