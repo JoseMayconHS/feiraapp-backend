@@ -53,21 +53,19 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
 
       try {
         const already = await db.supermarket.findOne({ 
-          nome_key: functions.keyWord(item.nome),
-          local: {
-            estado: {
-              cache_id: item.local.estado.cache_id
-            },
-            cidade: {
-              cache_id: item.local.cidade.cache_id
-            }
-          }
+          nome_key: item.nome_key,
+        }, {
+          projection: { local: 1 }
         })
 
         console.log('already', already)
 
         if (already) {
-          response = already
+          if (already.local.estado.cache_id === estado_id) {
+            if (already.local.cidade_id.cache_id === cidade_id) {
+              response = already
+            }
+          }
         }
 
       } catch(e) {
@@ -81,7 +79,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
 
     if (response) {
 
-      const updateData = { cache_id, hash_identify_device, descricao: item.descricao }
+      const updateData = { cache_id, hash_identify_device }
 
       await db.supermarket.updateOne({
         _id: response._id

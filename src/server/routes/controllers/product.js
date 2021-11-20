@@ -198,7 +198,7 @@ exports.save = async ({
 				})
 			}
 
-			const updateData = { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : nivel }
+			const updateData = { cache_id, hash_identify_device, nivel: nivel > 2 ? 2 : response.nivel }
 
 			await db.product.updateOne({
 				_id: response._id
@@ -546,7 +546,9 @@ exports._update = async ({
 
 			// // console.log('product._update end', { mongo_precos })
 
-			const updateData = { precos: mongo_precos, nivel: mongo_precos && mongo_data.nivel > 2 ? 2 : mongo_data.nivel }
+			const updateData = { 
+				precos: mongo_precos, 
+				nivel: mongo_precos && mongo_data.nivel > 2 ? 2 : mongo_data.nivel }
 
 			const precos_response = [
 				mongo_precos[state_index]
