@@ -126,7 +126,7 @@ exports.save = async ({
 
 					const verifyWeight = (v) => {
 						if (item.peso.tipo === v.peso.tipo) {
-							if (item.peso.valor == v.peso.valor && item.peso.force_down === v.peso.force_down) {
+							if (item.peso.valor == v.peso.valor && (item.peso.force_down || false) === (v.peso.force_down || false)) {
 								return true
 							}
 						}
@@ -135,7 +135,11 @@ exports.save = async ({
 					}
 
 					const verifyBrand = (v) => {
-						return String(item.marca_id._id) === String(v.marca_id._id)
+						if (String(item.marca_id._id).length) {
+							return String(item.marca_id._id) === String(v.marca_id._id)
+						} else {
+							return v.sem_marca
+						}
 					}
 
 					const verifyFlavor = (v) => {
@@ -146,7 +150,7 @@ exports.save = async ({
 								return (item.sabor.definido === v.sabor.definido)
 							}
 						} else {
-							return false
+							return !v.sabor.definido
 						}
 					}
 
