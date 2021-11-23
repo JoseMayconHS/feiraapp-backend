@@ -40,6 +40,7 @@ route
 	.post('/auth/app/produtos/:page', productControllers.indexBy)
 	.post('/auth/app/feira/produtos', productControllers.indexList)
 	.post('/auth/app/produto/:id/:page', productControllers.single)
+	.post('/auth/app/produto/lista-de-precos', productControllers.prices)
 	.post('/auth/app/baixar/produto', productControllers.all)
 	.post('/auth/admin/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/admin/produto/:id', productControllers.single)

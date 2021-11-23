@@ -984,6 +984,101 @@ exports.all = async (req, res) => {
 	}
 }
 
+exports.prices = async (req, res) => {
+	try {
+		const {
+			supermercado_id 
+		} = req.query
+
+		const {
+			local
+		} = req.body
+
+		if (!supermercado_id) {
+			return res.status(200).json({
+				ok: true, list: []
+			})
+		}
+
+		const supermarket = await req.db.supermarket.findOne({
+			_id: new ObjectId(supermercado_id)
+		}, {
+			projection: {
+				produtos: 1
+			}
+		})
+
+		if (supermarket) {
+			let products = await req.db.product.aggregate([{
+				$match: {
+					_id: {
+						$in: supermarket.produtos.map(({ produto_id }) => produto_id._id)
+					}
+				}
+			}, {
+				$project: {
+					precos: 1, _id: 1
+				}
+			}]).toArray()
+	
+			const list = []
+	
+			const { estado = {}, cidade = {} } = local
+
+			const { _id: uf } = estado
+			const { _id: mn } = cidade
+
+			if (!uf || !mn) {
+				return res.status(400).send()
+			}
+			const stack = products.map(item => ({
+				async fn() {
+					try {
+						const prices = item.precos
+	
+						const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
+	
+						if (state_index !== -1) {
+							const state = prices[state_index]
+	
+							const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
+	
+							if (region_index !== -1) {
+								const region = state.cidades[region_index]
+	
+								const range = {
+									menor_preco: region.menor_preco,
+									maior_preco: region.maior_preco
+								}
+	
+								list.push({
+									_id: item._id,
+									data: region.historico,
+									range
+								})
+							}
+						}
+					} catch(e) {
+						console.error(e)
+					}
+				}
+			}))
+	
+			await functions.middlewareAsync(...stack)
+	
+			res.status(200).json({
+				ok: true, list
+			})
+		} else {
+			res.status(400).send()
+		}
+
+	} catch(e) {
+		console.log(e)
+		res.status(500).send()
+	}
+}
+
 exports.single = async (req, res) => {
 	try {
 		let { id, page = 1 } = req.params
@@ -1005,10 +1100,6 @@ exports.single = async (req, res) => {
 		}
 
 		limitQuery = +limitQuery
-
-		// console.log('product.single query', req.query)
-		// console.log('product.single params', req.params)
-		// console.log('product.single body', req.body)
 
 		const options = [{
 			$match: {
@@ -1380,7 +1471,7 @@ exports.indexBy = async (req, res) => {
 			...where.request_ids
 		].map(_id => new ObjectId(_id)))]
 
-		// console.log({ where, ids })
+		console.log({ ids })
 
 		if (body.where.favoritos) {
 			ids = ids.filter(_id => where.favorites_ids.some(w_id => String(w_id) === String(_id)))
@@ -1406,15 +1497,9 @@ exports.indexBy = async (req, res) => {
 			ids = ids.filter(_id => where.supermarket_ids.some(w_id => String(w_id) === String(_id)))
 		}
 
-		const filterMatch = {
-			_id: {
-				$nin: where.not_ids.map(_id => new ObjectId(_id))
-			}
-		}
-
 		const optionsMatch = allLevel ? {} : {
 			nivel: {
-				$in: [1, 2]
+				$in: allLevel ? [1, 2, 3, 4] : [1, 2]
 			}
 		}
 
@@ -1464,7 +1549,10 @@ exports.indexBy = async (req, res) => {
 			const options = {
 				$match: {
 					...optionsMatch,
-					...filterMatch
+					_id: {
+						$nin: where.not_ids.map(_id => new ObjectId(_id)),
+						$in: ids
+					}
 				}
 			}
 
@@ -1474,6 +1562,9 @@ exports.indexBy = async (req, res) => {
 					options,
 					...optionsDocuments
 				]).toArray()
+
+				console.log(options,
+					...optionsDocuments)
 
 				await then(documents)
 			} else {
