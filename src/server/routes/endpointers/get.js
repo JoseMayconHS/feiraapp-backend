@@ -30,7 +30,7 @@ route
 	.get('/auth/admin/supermercados/:page', supermarketControllers.index)
 	// Marca
 	.get('/auth/admin/marca/:id', brandControllers.single)
-	.get('/auth/admin/marcas/:page', brandControllers.index)
+	.get('/auth/admin/marcas/:page', brandControllers.index)	
 	.get('/auth/app/marca/:id', brandControllers.single)
 	.get('/auth/app/marcas/:page', brandControllers.index)
 

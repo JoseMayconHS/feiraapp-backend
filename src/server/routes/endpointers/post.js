@@ -18,6 +18,7 @@ route
 	.post('/auth/app/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	.post('/auth/app/supermercados', _defaultsControllers.storeList({ save: supermarketControllers.save, update: supermarketControllers._update }))
 	.post('/auth/app/baixar/supermercado', supermarketControllers.all)
+	.post('/auth/app/atualizar/supermercado', supermarketControllers.latest)
 	// .post('/auth/admin/supermercado', _defaultsControllers.store(supermarketControllers.save))
 	// Buscar sem produtos
 	.post('/auth/app/supermercado/:id', supermarketControllers.single)
@@ -32,6 +33,7 @@ route
 	.post('/auth/app/marca', brandControllers.store)
 	.post('/auth/app/marcas', brandControllers.storeList)
 	.post('/auth/admin/marca', brandControllers.store)
+	.post('/auth/app/atualizar/marcas', brandControllers.latest)
 	// Marcas (Buscar por nome)
 	// .post('/auth/app/marcas/:page', brandControllers.indexBy)
 	// Produto
@@ -41,6 +43,7 @@ route
 	.post('/auth/app/feira/produtos', productControllers.indexList)
 	.post('/auth/app/produto/:id/:page', productControllers.single)
 	.post('/auth/app/produto/lista-de-precos', productControllers.prices)
+	.post('/auth/app/atualizar/produtos', productControllers.latest)
 	.post('/auth/app/baixar/produto', productControllers.all)
 	.post('/auth/admin/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/admin/produto/:id', productControllers.single)

@@ -481,6 +481,30 @@ exports.all = async (req, res) => {
   }
 }
 
+exports.latest = async (req, res) => {
+
+	try {
+
+    const {
+      ids = []
+    } = req.body
+
+    let documents = await req.db.supermarket.aggregate([{
+      $match: {
+        _id: {
+          $in: ids.map(id => new ObjectId(id))
+        }
+      }
+    }]).toArray()
+
+    res.status(200).json({ ok: true, data: documents })
+    		
+	} catch(error) {
+    console.error(error)
+		res.status(500).send()
+	}
+
+}
 exports.single = async (req, res) => {
 
 	try {
@@ -823,11 +847,25 @@ exports.update = async (req, res) => {
           body.nivel = +body.nivel
         }
 
+        if (body.local) {
+          body.local = {
+            estado: {
+              ...body.local.estado,
+              nome_key: functions.keyWord(body.local.estado.nome)
+            },
+            cidade: {
+              ...body.local.cidade,
+              nome_key: functions.keyWord(body.local.cidade.nome)
+            }
+          }
+        }
+
         await req.db.supermarket.updateOne({ _id: new ObjectId(id) }, { $set: body })
     }
 
     res.status(200).send()
   } catch(e) {
+    console.log(e)
     res.status(500).send()
   }
 }

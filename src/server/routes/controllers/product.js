@@ -1079,6 +1079,97 @@ exports.prices = async (req, res) => {
 	}
 }
 
+exports.latest = async (req, res) => {
+	try {
+
+		const {
+			ids = [],
+			local
+		} = req.body
+
+		const options = [{
+			$match: {
+				_id: {
+					$in: ids.map(id => new ObjectId(id))
+				}
+			}
+		}]
+
+		options.push({
+			$lookup: {
+				from: 'brand',
+				foreignField: '_id',
+				localField: 'marca_id._id',
+				as: 'marca_obj'
+			}
+		})
+
+		const documents = await req.db.product.aggregate(options).toArray()
+
+		const data = []
+
+		const stack = documents.map(item => ({
+			async fn() {
+				try {
+					const prices = item.precos
+					let product = {
+						...item,
+						precos: []
+					}
+
+					const { estado = {}, cidade = {} } = local
+
+					const { _id: uf } = estado
+					const { _id: mn } = cidade
+
+					if (!uf || !mn) {
+						return res.status(400).send()
+					}
+
+					let historic = [],
+						range = {}
+
+					const state_index = prices.findIndex(({ estado_id }) => estado_id === uf)
+
+					if (state_index !== -1) {
+						const state = prices[state_index]
+
+						const region_index = state.cidades.findIndex(({ cidade_id }) => cidade_id === mn)
+
+						if (region_index !== -1) {
+							const region = state.cidades[region_index]
+
+							range = {
+								menor_preco: region.menor_preco,
+								maior_preco: region.maior_preco
+							}
+
+							historic = region.historico
+						}
+					}
+
+					data.push({
+						historic, range, product
+					})
+				} catch(e) {
+					console.error(e)
+				}
+			}
+		}))
+
+		await functions.middlewareAsync(...stack)
+
+		res.status(200).json({
+			ok: true,
+			data
+		})
+
+	} catch (error) {
+		console.error(error)
+		res.status(500).send()
+	}
+}
+
 exports.single = async (req, res) => {
 	try {
 		let { id, page = 1 } = req.params

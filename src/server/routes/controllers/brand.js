@@ -87,6 +87,8 @@ exports.storeList = async (req, res) => {
               hash_identify_device, created_at: Date.now() 
             }
 
+            delete data.api_id
+
             const { insertedId } = await req.db.brand.insertOne(data)
 
             data._id = insertedId
@@ -218,6 +220,33 @@ exports.all = async (_, res) => {
   }
 }
 
+exports.latest = async (req, res) => {
+
+	try {
+    const {
+      ids = []
+    } = req.body
+
+    const documents = await req.db.brand.aggregate([{
+      $match: {
+        _id: {
+          $in: ids.map(id => new ObjectId(id))
+        }
+      }
+    }]).toArray()
+    
+    if (documents) {
+      res.status(200).json({ ok: true, data: documents })
+    } else {
+      res.status(400).send()
+    }
+			
+	} catch(error) {
+		res.status(500).send()
+	}
+
+}
+
 exports.single = async (req, res) => {
 
 	try {
@@ -330,6 +359,7 @@ exports.update = async (req, res) => {
     const data = req.body
 
     delete data._id
+    delete data.api_id
 
     if (data.nome && data.nome.length) {
       data.nome = functions.camellize(data.nome)
