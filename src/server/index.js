@@ -7,7 +7,7 @@ const express = require('express'),
 let db
 
 require('../services/mongodb')()
-  .then(mongo => {
+  .then(async mongo => {
     db = mongo
   }).catch(console.error)
 

@@ -78,7 +78,7 @@ exports.save = async ({
 		}
 
 		const item = {
-			nome, nome_key: functions.keyWord(nome),
+			nome, nome_key: functions.keyWord(nome), nomes: [],
 			sem_marca, cache_id, hash_identify_device, precos, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
 			tipo, sabor: { definido: false },
 			created_at: Date.now()
@@ -1421,11 +1421,11 @@ exports.indexBy = async (req, res) => {
 		const { page = 1 } = req.params
 
 		let { limit: limitQuery } = req.query
-
+		
 		if (!limitQuery) {
 			limitQuery = limit
 		}
-
+		
 		limitQuery = +limitQuery
 
 		const where = {
