@@ -9,7 +9,7 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome,  descricao = '', cache_id = 0, hash_identify_device = ''
+      nome,  descricao = '', cache_id = 0, hash_identify_device = '', nomes = []
     } = req.body
 
     const checkEmpty = {
@@ -33,11 +33,9 @@ exports.store = async (req, res) => {
 
         const data = { 
           nome: functions.camellize(nome), nome_key: functions.keyWord(nome), 
-          nomes: [], descricao, 
+          nomes, descricao, 
           cache_id, hash_identify_device, created_at: Date.now() 
         }
-
-        console.log(data)
 
         const { insertedId } = await req.db.brand.insertOne(data)
 
