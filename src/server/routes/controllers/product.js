@@ -32,8 +32,6 @@ exports.save = async ({
 			throw new Error()
 		}
 
-		console.log(data)
-
 		tipo.texto = functions.capitalize(tipo.texto)
 		tipo.texto_key = functions.keyWord(tipo.texto)
 
@@ -103,13 +101,6 @@ exports.save = async ({
 
 			item.sabor = sabor
 		}
-
-		// if (!sem_marca) {
-		//   item.marca_id = {
-		//     _id: new ObjectId(data_marca ? data_marca._id : ''),
-		//     cache_id: 0
-		//   }
-		// }
 
 		item.marca_id = {
 			_id: data_marca && data_marca._id ? new ObjectId(data_marca._id) : '',
