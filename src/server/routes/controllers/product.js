@@ -11,7 +11,7 @@ exports.save = async ({
 
 		const {
 			peso = {}, nome, sabor = {}, tipo = {}, sem_marca,
-			marca: marca_obj,
+			marca: marca_obj, nomes = [],
 			marca_id: marca = {},
 			cache_id = 0, precos = [], nivel = 4, nomes
 		} = data
@@ -32,7 +32,7 @@ exports.save = async ({
 			throw new Error()
 		}
 
-		console.log(tipo)
+		console.log(data)
 
 		tipo.texto = functions.capitalize(tipo.texto)
 		tipo.texto_key = functions.keyWord(tipo.texto)
@@ -90,7 +90,7 @@ exports.save = async ({
 		}
 
 		const item = {
-			...rest, nomes: nomes || [rest],
+			...rest, nomes: nomes.length ? nomes : [rest],
 			sem_marca, cache_id, hash_identify_device, precos, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
 			tipo, sabor: { definido: false },
 			created_at: Date.now()
