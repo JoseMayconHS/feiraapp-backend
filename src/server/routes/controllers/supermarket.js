@@ -620,7 +620,7 @@ exports.single = async (req, res) => {
                   if (region_index !== -1) {
                     const price = precos[state_index].cidades[region_index]
 
-                    if (!sem_marca && marca_id._id.length) {
+                    if (!sem_marca && String(marca_id._id).length) {
                       const mongo_marca = await req.db.brand.findOne({ _id: new ObjectId(marca_id._id) }, { projection: { nome: 1 } })
 
                       if (mongo_marca) {

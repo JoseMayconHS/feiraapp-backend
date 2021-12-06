@@ -62,7 +62,7 @@ exports.save = async ({
 
 					if (!data_marca) {
 						const { insertedId } = await db.brand.insertOne({
-							nome: marca_obj.nome,
+							nome: functions.camellize(marca_obj.nome),
 							nome_key: functions.keyWord(marca_obj.nome)
 						})
 
@@ -78,7 +78,7 @@ exports.save = async ({
 		}
 
 		const item = {
-			nome, nome_key: functions.keyWord(nome), nomes: [],
+			nome: functions.capitalize(nome), nome_key: functions.keyWord(nome), nomes: [],
 			sem_marca, cache_id, hash_identify_device, precos, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
 			tipo, sabor: { definido: false },
 			created_at: Date.now()

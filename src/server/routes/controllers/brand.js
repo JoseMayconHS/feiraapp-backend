@@ -9,7 +9,7 @@ exports.store = async (req, res) => {
   try {
 
     const { 
-      nome,  descricao, cache_id = 0, hash_identify_device = ''
+      nome,  descricao = '', cache_id = 0, hash_identify_device = ''
     } = req.body
 
     const checkEmpty = {
@@ -32,7 +32,8 @@ exports.store = async (req, res) => {
       try {
 
         const data = { 
-          nome: functions.camellize(nome), nome_key: functions.keyWord(nome), descricao, 
+          nome: functions.camellize(nome), nome_key: functions.keyWord(nome), 
+          nomes: [], descricao, 
           cache_id, hash_identify_device, created_at: Date.now() 
         }
 
@@ -153,7 +154,7 @@ exports.index = async (req, res) => {
     }, {
       $project: {
         nome: 1,
-        descricao: 1
+        descricao: 1, nomes: 1
       }
     }]
 

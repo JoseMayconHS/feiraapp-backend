@@ -181,10 +181,17 @@ exports.keyWord = (word) => remove_accents(word).toLowerCase().trim()
 
 exports.capitalize = (val) => {
   if (typeof val !== 'string') val = ''
+
+  val = val.trim()
+
   return val.charAt(0).toUpperCase() + val.substring(1).toLowerCase()
 }
 
 exports.camellize = (str) => {
+  if (typeof str !== 'string') str = ''
+
+  str = str.trim()
+
   const firstLetter = str.replace(/^[^*]/g, (match) => {
     return +match === 0 ? ' ' : match.toUpperCase()
   })
