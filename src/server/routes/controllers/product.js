@@ -13,7 +13,7 @@ exports.save = async ({
 			peso = {}, nome, sabor = {}, tipo = {}, sem_marca,
 			marca: marca_obj, nomes = [],
 			marca_id: marca = {},
-			cache_id = 0, precos = [], nivel = 4, nomes
+			cache_id = 0, precos = [], nivel = 4
 		} = data
 
 		// console.log('product.save()', data)
