@@ -37,6 +37,8 @@ exports.store = async (req, res) => {
           cache_id, hash_identify_device, created_at: Date.now() 
         }
 
+        console.log(data)
+
         const { insertedId } = await req.db.brand.insertOne(data)
 
         data._id = insertedId

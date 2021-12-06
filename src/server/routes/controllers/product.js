@@ -13,7 +13,7 @@ exports.save = async ({
 			peso = {}, nome, sabor = {}, tipo, sem_marca,
 			marca: marca_obj,
 			marca_id: marca = {},
-			cache_id = 0, precos = [], nivel = 4
+			cache_id = 0, precos = [], nivel = 4, nomes
 		} = data
 
 		// console.log('product.save()', data)
@@ -61,9 +61,15 @@ exports.save = async ({
 					}, { projection: { nome: 1 } })
 
 					if (!data_marca) {
-						const { insertedId } = await db.brand.insertOne({
+						const rest = {
 							nome: functions.camellize(marca_obj.nome),
 							nome_key: functions.keyWord(marca_obj.nome)
+						}
+						const { insertedId } = await db.brand.insertOne({
+							...rest,
+							nomes: [rest],
+							descricao: ''
+
 						})
 
 						data_marca = {
@@ -77,8 +83,12 @@ exports.save = async ({
 			}
 		}
 
+		const rest = {
+			nome: functions.capitalize(nome), nome_key: functions.keyWord(nome)
+		}
+
 		const item = {
-			nome: functions.capitalize(nome), nome_key: functions.keyWord(nome), nomes: [],
+			...rest, nomes: nomes || [rest],
 			sem_marca, cache_id, hash_identify_device, precos, nivel: +nivel, peso: { ...peso, valor: String(peso.valor) },
 			tipo, sabor: { definido: false },
 			created_at: Date.now()
