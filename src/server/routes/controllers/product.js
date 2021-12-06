@@ -10,7 +10,7 @@ exports.save = async ({
 	try {
 
 		const {
-			peso = {}, nome, sabor = {}, tipo, sem_marca,
+			peso = {}, nome, sabor = {}, tipo = {}, sem_marca,
 			marca: marca_obj,
 			marca_id: marca = {},
 			cache_id = 0, precos = [], nivel = 4, nomes
@@ -21,7 +21,7 @@ exports.save = async ({
 		const { tipo: peso_tipo } = peso
 
 		const checkEmpty = {
-			nome, tipo, peso_tipo
+			nome, peso_tipo
 		}
 
 		if (!sem_marca && marca_obj) {
@@ -31,6 +31,8 @@ exports.save = async ({
 		if (functions.hasEmpty(checkEmpty)) {
 			throw new Error()
 		}
+
+		console.log(tipo)
 
 		tipo.texto = functions.capitalize(tipo.texto)
 		tipo.texto_key = functions.keyWord(tipo.texto)
