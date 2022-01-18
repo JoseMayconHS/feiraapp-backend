@@ -43,7 +43,7 @@ exports.storeList = async (req, res) => {
         .map(item => ({
           reporte_id: new ObjectId(item.reporte_id),
           texto: item.texto,
-          _schema: req.body._schema,
+          _schema: item._schema,
           push_token,
           created_at: Date.now()
         }))
