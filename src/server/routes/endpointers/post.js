@@ -11,6 +11,7 @@ const route = require('express').Router(),
 		
 route
 	// App
+	.post('/auth/app/notificacao', pushNotificationControllers.getPushToken)
 	// Reporte
 	.post('/auth/app/reporte', reportControllers.store)
 	.post('/auth/app/reportes', reportControllers.storeList)
@@ -52,6 +53,7 @@ route
 	.post('/dashboard/signup', admControllers.store)
 	.post('/auth/admin/marca', brandControllers.store)
 	.post('/auth/admin/notificacao', pushNotificationControllers.send)
+	.post('/auth/admin/notificacoes', pushNotificationControllers.sendAll)
 	// Do cache para a api
 	.post('/auth/app/cache/produto', _defaultsControllers.store(productControllers.save))
 	.post('/auth/app/cache/marca', brandControllers.store)

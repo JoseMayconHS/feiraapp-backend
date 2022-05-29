@@ -3,11 +3,12 @@ const route = require('express').Router(),
 	supermarketControllers = require('../controllers/supermarket'),
 	brandControllers = require('../controllers/brand'),
 	admControllers = require('../controllers/adm'),
-	reportControllers = require('../controllers/report')
+	reportControllers = require('../controllers/report'),
+	pushNotification = require('../controllers/pushNotification')
 
 const html = `
 	<div style='font-family: sans-serif;background: #73BE73;display: flex;justify-content: center;align-items: center;flex-direction: column;margin: 134px auto 20px auto;max-width: 500px;border-radius: 10px;box-shadow: 0 0 41px 20px #73BE73;border: 1px solid #CCC;'>
-		<h1 style='margin-bottom: 0.6em; color: #FFF'>FeiraApp - 1.0.0</h1>
+		<h1 style='margin-bottom: 0.6em; color: #FFF'>FeiraApp - 2.0.0</h1>
 		<p style='max-width: 500px; line-height: 21px; font-weight: 600; color: #CCC'>Desenvolvido por 
 		<a href='https://www.facebook.com/profile.php?id=100008160376957' target='_blank' style='color: tomato; text-decoration: none;'>Maycon Silva</a></p>
 	</div>
@@ -33,5 +34,7 @@ route
 	.get('/auth/admin/marcas/:page', brandControllers.index)	
 	.get('/auth/app/marca/:id', brandControllers.single)
 	.get('/auth/app/marcas/:page', brandControllers.index)
-
+	// Notificações
+	.get('/auth/admin/notificacoes', pushNotification.getRecents)
+	
 module.exports = app => app.use(route)
