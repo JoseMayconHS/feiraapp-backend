@@ -154,7 +154,7 @@ exports.index = async (req, res) => {
     }, {
       $project: {
         nome: 1,
-        descricao: 1, nomes: 1
+        descricao: 1, nomes: 1, created_at: 1
       }
     }]
 
