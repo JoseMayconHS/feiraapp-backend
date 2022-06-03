@@ -1,6 +1,8 @@
 const { ObjectId } = require("mongodb"),
   functions = require("../../../functions"),
-  firebase = require("../../../services/firebase");
+  { optionsCounted } = require('../../../utils'),
+  firebase = require("../../../services/firebase"),
+  limit = +process.env.LIMIT_PAGINATION || 10
 
 exports.notify = async ({
   _id,
@@ -306,7 +308,7 @@ exports.getRecents = async (req, res) => {
   }
 }
 
-exports.getPushToken = async (req, res) => {
+exports.setPushToken = async (req, res) => {
   try {
     const { push_token, device_id } = req.body
     const { db } = req
@@ -326,5 +328,70 @@ exports.getPushToken = async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).send();
+  }
+}
+
+exports.getPushToken = async (req, res) => {
+   // OK
+
+   try {
+    let {
+      limit: limitQuery
+    } = req.query
+
+    let { page = 1 } = req.params
+
+    page = +page
+
+    if (!limitQuery) {
+      limitQuery = limit
+    }
+
+    limitQuery = +limitQuery
+
+    const options = [{
+      $sort: {
+        data: -1
+      }
+    }, {
+      $project: {
+        push_token: 1, data: 1
+      }
+    }]
+
+    const optionsPaginated = [{
+      $skip: (limitQuery * page) - limitQuery
+    }, {
+      $limit: limitQuery 
+    }]
+
+    let response = []
+
+    let count = 0
+
+    const [{ documents, postsCounted }] = await req.db.push_tokens.aggregate([{
+      $facet: {
+        documents: [
+          ...options,
+          ...optionsPaginated
+        ],
+        postsCounted: [
+          ...options,
+          ...optionsCounted
+        ]   
+      }
+    }]).toArray()    
+
+    if (postsCounted.length) {
+      count = postsCounted[0].count
+    }
+
+    response = documents
+
+    res.status(200).json({ ok: true, data: response, limit: limitQuery, count, page })
+
+  } catch(err) {
+    console.error(err)
+    res.status(500).send()
   }
 }

@@ -36,5 +36,6 @@ route
 	.get('/auth/app/marcas/:page', brandControllers.index)
 	// Notificações
 	.get('/auth/admin/notificacoes', pushNotification.getRecents)
+	.get('/auth/admin/push_tokens/:page', pushNotification.getPushToken)
 	
 module.exports = app => app.use(route)

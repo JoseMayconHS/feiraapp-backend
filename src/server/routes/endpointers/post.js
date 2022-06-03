@@ -11,7 +11,7 @@ const route = require('express').Router(),
 		
 route
 	// App
-	.post('/auth/app/notificacao', pushNotificationControllers.getPushToken)
+	.post('/auth/app/notificacao', pushNotificationControllers.setPushToken)
 	// Reporte
 	.post('/auth/app/reporte', reportControllers.store)
 	.post('/auth/app/reportes', reportControllers.storeList)
