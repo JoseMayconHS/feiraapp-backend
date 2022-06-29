@@ -5,25 +5,25 @@ const { ObjectId }= require('mongodb'),
 
 exports.save = async ({ data, hash_identify_device = '', db }) => {
   try {
-    const { 
+    const {
       nome, local, produtos = [], cache_id = 0, nivel = 4
     } = data
 
   // console.log('supermarket.save()', data)
 
     const { estado = {}, cidade = {} } = local
-    
+
     const { nome: estado_nome, sigla: estado_sigla, _id: estado_id } = estado
     const { nome: cidade_nome, _id: cidade_id } = cidade
-    
+
     const checkEmpty = {
       nome, cidade_nome, estado_nome, estado_sigla
     }
-    
+
     if (functions.hasEmpty(checkEmpty)) {
       throw new Error()
     }
-    
+
     const item = {
       nome: functions.camellize(nome), nome_key: functions.keyWord(nome),
       cache_id, hash_identify_device, nivel,
@@ -39,7 +39,7 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
           cache_id: estado_id,
           nome: estado_nome,
           sigla: estado_sigla
-        }, 
+        },
         cidade: {
           cache_id: cidade_id,
           nome: cidade_nome,
@@ -47,12 +47,12 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
         }
       }, created_at: Date.now()
     }
-        
+
     const alreadyExists = async () => {
       let response
 
       try {
-        const already = await db.supermarket.findOne({ 
+        const already = await db.supermarket.findOne({
           nome_key: item.nome_key,
         }, {
           projection: { local: 1 }
@@ -95,13 +95,13 @@ exports.save = async ({ data, hash_identify_device = '', db }) => {
 
     } else {
       const { insertedId } = await db.supermarket.insertOne(item)
-  
+
       return { ...item, cache_id, _id: insertedId }
     }
 
   } catch(e) {
     console.error(e)
-    return 
+    return
   }
 }
 
@@ -111,7 +111,7 @@ exports._update = async ({
   try {
 
     // console.log('supermarket._update', { data, mongo_data, hash_identify_device })
-    
+
     if (!mongo_data) {
 
       mongo_data = await db.supermarket.findOne({ _id: new ObjectId(data.api_id) })
@@ -128,13 +128,13 @@ exports._update = async ({
           return mongo_data
             .produtos
             .findIndex(({ produto_id }) => {
-  
+
               const  { cache_id, _id: mongo_id } = produto_id
               const  { cache_id: cache_id_request, _id: mongo_id_request } = produto_id_request
-  
-              // || cache_id_request && (cache_id_request === cache_id) 
 
-              return (mongo_id_request.length && String(mongo_id) === String(mongo_id_request)) 
+              // || cache_id_request && (cache_id_request === cache_id)
+
+              return (mongo_id_request.length && String(mongo_id) === String(mongo_id_request))
             }) === -1
         } else {
           return false
@@ -143,7 +143,7 @@ exports._update = async ({
       })
 
       const new_products = []
-  
+
       const products_middleware = produtos.map(product => ({
         async fn() {
           try {
@@ -165,7 +165,7 @@ exports._update = async ({
               const product_data = await db.product.findOne({
                 hash_identify_device, cache_id: product.produto_id.cache_id
               }, { projection: { _id: 1 } })
-              
+
               if (product_data) {
                 new_products.push({
                   ...product,
@@ -179,7 +179,7 @@ exports._update = async ({
                 new_products.push(product)
               }
             }
-            
+
           } catch(e) {
             console.error(e)
           }
@@ -195,10 +195,10 @@ exports._update = async ({
     //   return produtos_join.findIndex(_product => String(_product.produto_id._id) === String(product.produto_id._id)) === index
     // })
 
-    const updateData = { 
-      produtos: produtos_join, 
-      nivel: mongo_data.nivel > 2 ? 2 : mongo_data.nivel, 
-      hash_identify_device: '', cache_id: 0 
+    const updateData = {
+      produtos: produtos_join,
+      nivel: mongo_data.nivel > 2 ? 2 : mongo_data.nivel,
+      hash_identify_device: '', cache_id: 0
     }
 
     await db.supermarket.updateOne({
@@ -218,7 +218,7 @@ exports.store = async (req, res) => {
   // Ok
   try {
 
-    const { 
+    const {
       hash_identify_device = ''
     } = req.body
 
@@ -246,12 +246,12 @@ exports.storeList = async (req, res) => {
 
     const stacks = data.map(item => ({
       async fn() {
-        try {   
+        try {
 
           const save_response = await this.save({
             data: item, hash_identify_device, db: req.db
           })
-      
+
           save_response && response.push(save_response)
 
         } catch(e) {
@@ -281,7 +281,7 @@ exports.index = async (req, res) => {
 
     page = +page
 
-    let { 
+    let {
       limit: limitQuery,
       nome = '', nivel,
       cidade_id, estado_id
@@ -318,8 +318,8 @@ exports.index = async (req, res) => {
       $match['local.cidade.cache_id'] = +cidade_id
     }
 
-    let bests 
-    
+    let bests
+
     if (where) {
       bests = where.bests
 
@@ -358,7 +358,7 @@ exports.index = async (req, res) => {
         _id: '$_id',
         doc: { $first: "$$ROOT" }
       }
-    }, { 
+    }, {
       $replaceRoot: {
         newRoot: { $mergeObjects: ['$doc', produtos || bests ? {} : { produtos: [] }] }
       }
@@ -367,7 +367,7 @@ exports.index = async (req, res) => {
     const optionsPaginated = [{
       $skip: (limitQuery * page) - limitQuery
     }, {
-      $limit: limitQuery 
+      $limit: limitQuery
     }]
 
     const [{ documents, postsCounted }] = await req.db.supermarket.aggregate([{
@@ -376,10 +376,10 @@ exports.index = async (req, res) => {
         postsCounted: [
           ...options,
           ...optionsCounted
-        ]   
+        ]
       }
     }]).toArray()
-    
+
     let count = 0
 
     if (postsCounted.length) {
@@ -401,14 +401,7 @@ exports.index = async (req, res) => {
 
           if (a.__media) {
             if (b.__media) {
-              switch(true) {
-                case (v < 0):
-                  return -1
-                case (v > 0):
-                  return -1
-                default:
-                  return 1
-              }
+              return (v < 0) || (v > 0) ? -1 : 1
             } else {
               return -1
             }
@@ -426,7 +419,7 @@ exports.index = async (req, res) => {
 
           return item
         })
-        .slice((page * limitQuery) - limitQuery, page * limitQuery) : 
+        .slice((page * limitQuery) - limitQuery, page * limitQuery) :
         [ ...documents ]
 
     if (undefineds.length) {
@@ -453,7 +446,7 @@ exports.all = async (req, res) => {
   }
 
   const { uf, mn } = locale
-  
+
   try {
 
     const documents = await req.db.supermarket.aggregate([{
@@ -498,7 +491,7 @@ exports.latest = async (req, res) => {
     }]).toArray()
 
     res.status(200).json({ ok: true, data: documents })
-    		
+
 	} catch(error) {
     console.error(error)
 		res.status(500).send()
@@ -563,7 +556,7 @@ exports.single = async (req, res) => {
               foreignField: '_id',
               as: 'marca_obj'
             }
-          }, 
+          },
           // (DESC) COMENTEI PRA EVITAR QUE PRODUTOS SEM MARCA E SEM NOTIFICAÇÃO NÃO FOSSEM LISTADOS
           // {
           //   $unwind: '$marca_obj'
@@ -594,29 +587,29 @@ exports.single = async (req, res) => {
           const stack = mongo_produtos.map(produto => ({
             async fn() {
               try {
-  
+
                 const { preco_u, produto_id } = produtos
                   .find(({ produto_id }) => String(produto_id._id) === String(produto._id)) || {}
-  
+
                 if (!preco_u || !produto_id) throw new Error(`produto_id ou preco_u estao vazios`)
 
                 const { precos, sem_marca, marca_id } = produto
-  
+
                 const state_index = precos.findIndex(preco => preco.estado_id === local.estado.cache_id)
-  
+
                 const response_item = {
                   nome: produto.nome,
                   sabor: produto.sabor.nome || '',
                   peso: functions.getWeight(produto.peso),
                   marca: '',
-                  preco_u, 
+                  preco_u,
                   produto_id
                 }
-  
+
                 if (state_index !== -1) {
-  
+
                   const region_index = precos[state_index].cidades.findIndex(({ cidade_id }) => cidade_id === local.cidade.cache_id)
-  
+
                   if (region_index !== -1) {
                     const price = precos[state_index].cidades[region_index]
 
@@ -627,11 +620,11 @@ exports.single = async (req, res) => {
                         response_item.marca = mongo_marca.nome
                       }
                     }
-          
+
                     const last_price = price.historico.find(({ supermercado_id: history_supermercado_id }) => {
                       return (String(single._id) !== String(history_supermercado_id._id))
                     })
-                    
+
                     if (last_price) {
 
                       if (+last_price.preco_u >= +preco_u) {
@@ -654,25 +647,25 @@ exports.single = async (req, res) => {
                         if (+best_of_history.preco_u >= +preco_u) {
                           classification.melhores_precos.push(response_item)
                         }
-          
+
                       } else if (+last_price.preco_u < +preco_u) {
                         // maior preco
-          
+
                         classification.piores_precos.push(response_item)
-                      } 
+                      }
                     } else {
                       classification.melhores_precos.push(response_item)
                     }
-  
+
                   } else {
                     // SE NAO TIVER ESSE MUNICIPIO
-  
+
                   }
                 } else {
                   // SE NAO TIVER ESSE ESTADO
-  
+
                 }
-  
+
               } catch(e) {
                 console.error(e)
               }
@@ -712,7 +705,7 @@ exports.single = async (req, res) => {
       let single = await req.db.supermarket.findOne({
         _id: new ObjectId(id)
       }, options)
-      
+
       if (single) {
 
         single = functions.setUndefineds({
@@ -729,7 +722,7 @@ exports.single = async (req, res) => {
       }
 
     }
-    		
+
 	} catch(error) {
     console.error(error)
 		res.status(500).send()
@@ -750,14 +743,14 @@ exports.updateProducts = async ({ data, _id, db }) => {
   if (supermarket) {
 
     let products = [ ...supermarket.produtos ]
-  
+
     products = products.map(product => {
       const { produto_id: { _id } } = product
-  
-      const product_in_request = data.produtos.find(({ 
+
+      const product_in_request = data.produtos.find(({
         produto_id
       }) => String(produto_id._id) === String(_id))
-  
+
       if (product_in_request) {
         return {
           ...product,
@@ -769,11 +762,11 @@ exports.updateProducts = async ({ data, _id, db }) => {
         return product
       }
     })
-  
+
     data.produtos.forEach(({ produto_id, preco_u, atualizado }) => {
       const productIndex = products
         .findIndex(({ produto_id: { _id } }) => String(_id) === String(produto_id._id))
-  
+
       if (productIndex === -1) {
         products.unshift({
           produto_id: {
@@ -811,7 +804,7 @@ exports.updateProducts = async ({ data, _id, db }) => {
         produtos: products, nivel: supermarket.nivel > 2 ? 2 : supermarket.nivel
       }
     })
-  
+
   }
 
 }
@@ -829,13 +822,13 @@ exports.update = async (req, res) => {
       throw new Error()
 
     switch (campo) {
-      case 'produtos':    
+      case 'produtos':
         await this.updateProducts({ _id, data, db: req.db })
         break
       default :
-      
+
         const body = req.body
-        
+
         delete body._id
 
         if (body.nome && body.nome.length) {
@@ -895,7 +888,7 @@ exports.remove = async (req, res) => {
       }
 
       const $or = [
-        { 
+        {
           ...findDefault,
           'precos.cidades.menor_preco.supermercado_id._id': new ObjectId(id)
         },
@@ -942,11 +935,11 @@ exports.remove = async (req, res) => {
                     }
 
                     cidade.historico = cidade.historico.filter(historico => String(historico.supermercado_id._id) !== id)
-                    
+
                     if (String(cidade.maior_preco.supermercado_id._id) === id) {
                       cidade.maior_preco = cidade.historico.sort((a, b) => b.preco_u - a.preco_u)[0] || default_value
                     }
-                    
+
                     if (String(cidade.menor_preco.supermercado_id._id) === id) {
                       cidade.menor_preco = cidade.historico.sort((a, b) => a.preco_u - b.preco_u)[0] || default_value
                     }
@@ -990,4 +983,3 @@ exports.remove = async (req, res) => {
     res.status(500).send(e)
   }
 }
-

@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express'),
   cors = require('cors'),
+  schendule = require('../services/schendule'),
   port = process.env.PORT || 3030,
   app = express()
 
@@ -9,6 +10,7 @@ let db
 require('../services/mongodb')()
   .then(async mongo => {
     db = mongo
+    schendule.push_token(mongo)
   }).catch(console.error)
 
 app.use(cors())

@@ -1,4 +1,6 @@
 .env
+.vscode
+ecosystem.config.js
 
 # Node artifact files
 node_modules/

@@ -211,7 +211,7 @@ exports.sendAll = async (req, res) => {
         .json({ ok: false, message: "Existe campos vazios!" });
     }
 
-    const push_tokens = await req.db.push_tokens.find({}, { projection: { push_token: 1, data: 1, _id: 1 } }).toArray();
+    const push_tokens = await req.db.push_tokens.find({}, { projection: { push_token: 1, data: 1, _id: 1 } }).toArray()
 
     // LIMITADO EM 450 TOKENS POR VEZ
     const messagens = push_tokens.reduce((acc, { push_token }, index) => {
@@ -237,10 +237,10 @@ exports.sendAll = async (req, res) => {
       .map(({ _id }) => _id)
 
     if (push_tokens_to_delete.length) {
-      await req.db.push_tokens.deleteMany({ 
+      await req.db.push_tokens.deleteMany({
         _id: {
           $in: push_tokens_to_delete
-        } 
+        }
       })
     }
 
@@ -250,7 +250,7 @@ exports.sendAll = async (req, res) => {
           await firebase.messaging().sendAll(msgs, false)
         }
       }))
-    ) 
+    )
 
     const _recents = await req.db.notification
       .find()
@@ -263,7 +263,7 @@ exports.sendAll = async (req, res) => {
       mensagem: body,
       data: new Date
     }
-    
+
     if (recents.length > 5) {
       await req.db.notification.deleteMany({
         _id: {
@@ -274,7 +274,7 @@ exports.sendAll = async (req, res) => {
       recents.pop()
 
       recents.unshift(notification)
-  
+
       await req.db.notification.insertMany(
         recents
         .reverse()
@@ -362,7 +362,7 @@ exports.getPushToken = async (req, res) => {
     const optionsPaginated = [{
       $skip: (limitQuery * page) - limitQuery
     }, {
-      $limit: limitQuery 
+      $limit: limitQuery
     }]
 
     let response = []
@@ -378,9 +378,9 @@ exports.getPushToken = async (req, res) => {
         postsCounted: [
           ...options,
           ...optionsCounted
-        ]   
+        ]
       }
-    }]).toArray()    
+    }]).toArray()
 
     if (postsCounted.length) {
       count = postsCounted[0].count

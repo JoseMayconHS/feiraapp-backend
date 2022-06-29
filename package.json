@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "2.2.0",
   "name": "feira-app",
   "author": {
     "name": "José Maycon Hermogenes da Silva",
@@ -10,8 +10,8 @@
     "dev": "nodemon src/server",
     "prod": "pm2 start ecosystem.config.js --env production",
     "proto": "pm2 start ecosystem.config.js",
-    "pull": "git pull -X theirs",
-    "aws": "ssh -i \"AWS_feiraapp.pem\" ubuntu@ec2-18-228-162-86.sa-east-1.compute.amazonaws.com"
+    "schendule": "nodemon src/services/schendule/index",
+    "pull": "git pull -X theirs"
   },
   "dependencies": {
     "axios": "^0.21.0",
@@ -28,6 +28,7 @@
     "jsonwebtoken": "8.5.1",
     "moment-timezone": "^0.5.33",
     "mongodb": "^4.1.1",
+    "node-schedule": "^2.1.0",
     "pm2": "^4.5.0",
     "remove-accents": "^0.4.2"
   },
