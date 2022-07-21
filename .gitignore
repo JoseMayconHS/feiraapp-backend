@@ -47,4 +47,4 @@ Thumbs.db
 *.mov
 *.wmv
 
-private_key.json
+service_account_key.json
