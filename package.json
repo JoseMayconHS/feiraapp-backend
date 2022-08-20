@@ -6,7 +6,7 @@
     "url": "https://www.facebook.com/profile.php?id=100008160376957"
   },
   "scripts": {
-    "start": "node src/server",
+    "start": "yarn && node src/server",
     "dev": "nodemon src/server",
     "prod": "pm2 start ecosystem.config.js --env production",
     "proto": "pm2 start ecosystem.config.js",
